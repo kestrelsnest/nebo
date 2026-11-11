@@ -1,0 +1,23 @@
+# Build output (build.ps1, server\dll\build.ps1, streamdeck\build.ps1)
+bin/
+obj/
+build/
+/app/
+/Nebo.Client.exe
+.vs/
+*.user
+branding/node_modules/
+
+# Release packages (server\package.ps1)
+/release/
+
+# Real server settings (controller passwords): only NEBO.example.lua is in the repository
+server/config/NEBO.lua
+
+# Local data, never published: map zips, third-party airfield diagrams, captured terrain maps
+# (tools\MapCapture, ~1.8 GB each), downloads
+/*.zip
+/Diagrams/
+/maps/
+/_downloads/
+*.miz.bak

@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The generator scripts that make the data cartridge tables from the controller's own DCS
+         install (Dtc/DtcData.cs). The tables themselves are Eagle Dynamics' data: never shipped. -->
+    <EmbeddedResource Include="..\..\tools\DtcDefs\*.lua" LogicalName="DtcGen.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

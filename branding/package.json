@@ -1,0 +1,8 @@
+{
+  "name": "nebo-branding",
+  "private": true,
+  "description": "Makes NEBO's icon and logo images from the SVGs (node make-icons.js)",
+  "dependencies": {
+    "@resvg/resvg-js": "2.6.2"
+  }
+}

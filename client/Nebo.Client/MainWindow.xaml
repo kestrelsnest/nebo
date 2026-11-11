@@ -1,0 +1,76 @@
+﻿<Window x:Class="Nebo.Client.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ad="https://github.com/Dirkster99/AvalonDock"
+        Title="NEBO ATC/GCI" Height="800" Width="1400">
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_Connection">
+                <MenuItem Header="_Connect…" Click="Connect_Click"/>
+                <MenuItem Header="_Disconnect" Click="Disconnect_Click"/>
+            </MenuItem>
+            <MenuItem Header="_Window">
+                <MenuItem Header="New _tab">
+                    <MenuItem Header="_GCI (map, objects, zones, SRS)" Click="NewGciWindow_Click"/>
+                    <MenuItem Header="_ATC (ATC, SRS, DCS map)" Click="NewAtcWindow_Click"/>
+                    <MenuItem Header="_DTC (data cartridge, map)" Click="NewDtcWindow_Click"/>
+                </MenuItem>
+                <MenuItem Header="_Detach this tab" Click="DetachTab_Click" ToolTip="Move the current workspace into a window of its own (e.g. a second screen)"/>
+                <MenuItem Header="_Close this tab" Click="CloseTab_Click"/>
+                <Separator/>
+                <MenuItem Header="_Objects" Click="ShowObjects_Click"/>
+                <MenuItem Header="_Zones (Foothold)" Click="ShowZones_Click"/>
+                <MenuItem Header="_SRS" Click="ShowSrs_Click"/>
+                <MenuItem Header="_ATC" Click="ShowAtc_Click"/>
+                <MenuItem Header="_Packages" Click="ShowPackages_Click"/>
+                <MenuItem Header="_Engagements" Click="ShowEngagements_Click"/>
+                <MenuItem Header="ATC _views">
+                    <MenuItem Header="_Diagram" Tag="view:diagram" Click="ShowAtcView_Click"/>
+                    <MenuItem Header="_Approach" Tag="view:approach" Click="ShowAtcView_Click"/>
+                    <MenuItem Header="_Carrier" Tag="view:carrier" Click="ShowAtcView_Click"/>
+                    <MenuItem Header="_LSO" Tag="view:lso" Click="ShowAtcView_Click"/>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="_Save layout" Click="SaveLayout_Click" ToolTip="Save every window's panels, maps and positions now (also done on exit)"/>
+                <Separator/>
+                <MenuItem Header="_Reset layout" Click="ResetLayout_Click"/>
+            </MenuItem>
+            <MenuItem Header="_Settings" Click="Settings_Click"
+                      ToolTip="Theme, map data, key bindings, alarms and SRS (radio position, SRS app)"/>
+            <MenuItem Header="_Help">
+                <MenuItem Header="_Manual" Tag="https://github.com/kestrelsnest/nebo/blob/main/docs/MANUAL.md" Click="OpenLink_Click"/>
+                <MenuItem Header="_Discord" Tag="https://discord.gg/FZGRqwc2Eg" Click="OpenLink_Click"/>
+                <Separator/>
+                <MenuItem Header="_About NEBO" Click="About_Click"/>
+            </MenuItem>
+        </Menu>
+        <!-- New-version notice (Updates.cs): shown when GitHub has a newer release. -->
+        <Border x:Name="UpdateBar" DockPanel.Dock="Top" Visibility="Collapsed" Padding="8,4" Background="{DynamicResource Nebo.AccentSoft}">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Later" Padding="8,1" Margin="6,0,0,0" Click="UpdateLater_Click"/>
+                <Button x:Name="UpdateInstall" DockPanel.Dock="Right" Padding="8,1" Click="UpdateInstall_Click"/>
+                <TextBlock x:Name="UpdateText" VerticalAlignment="Center"/>
+            </DockPanel>
+        </Border>
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <TextBlock x:Name="ConnectionText" Text="Not connected"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock x:Name="PictureText"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock x:Name="SrsText" Cursor="Hand" ToolTip="Click: Settings → SRS (radio position, SRS app, details)"
+                           MouseLeftButtonUp="SrsText_Click"/>
+            </StatusBarItem>
+        </StatusBar>
+        <!-- Workspace tabs (GCI, ATC…): each a docking area; ⇱ moves one into a window of its own. -->
+        <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Nebo.Border}">
+            <StackPanel x:Name="TabStrip" Orientation="Horizontal" Margin="4,2,4,0"/>
+        </Border>
+        <!-- All workspaces stay loaded; the selected one is shown (no reload on switching). -->
+        <Grid x:Name="WorkspaceHost"/>
+    </DockPanel>
+</Window>

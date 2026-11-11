@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { background: #2d2d2d; color: #d8d8d8; font: 13px "Segoe UI", sans-serif; margin: 0; padding: 12px 16px; }
+  label { display: inline-block; width: 90px; color: #9a9a9a; }
+  select { background: #3d3d3d; color: #e8e8e8; border: 1px solid #555; border-radius: 3px; padding: 3px 6px; min-width: 140px; }
+  p { color: #8a8a8a; margin: 10px 0 0; }
+</style>
+</head>
+<body>
+<div id="row"><label id="what">Key</label><select id="pick"></select></div>
+<p id="hint"></p>
+<script>
+// NEBO key settings: which engagement marker, SRS channel or map filter this key is.
+let socket, uuid, settings = {}, kind = "";
+const filters = [["ground", "Ground units"], ["landed", "Landed"], ["rings", "Threat rings"], ["marks", "F10 marks"],
+                 ["tgp", "TGP"], ["zones", "Zones"], ["airfields", "Airfields"]];
+
+function connectElgatoStreamDeckSocket(port, inUuid, registerEvent, info, actionInfo) {
+  uuid = inUuid;
+  const action = JSON.parse(actionInfo);
+  kind = action.action.split(".").pop();
+  settings = action.payload.settings || {};
+  socket = new WebSocket("ws://127.0.0.1:" + port);
+  socket.onopen = () => socket.send(JSON.stringify({ event: registerEvent, uuid: inUuid }));
+  build();
+}
+
+function build() {
+  const pick = document.getElementById("pick");
+  const what = document.getElementById("what");
+  const hint = document.getElementById("hint");
+  let options, key, current;
+  if (kind === "engagement") {
+    options = [1, 2, 3, 4, 5, 6, 7, 8].map(n => [String(n), "Marker " + n]);
+    key = "n"; what.textContent = "Marker";
+    hint.textContent = "The engagement line with this marker (set it in NEBO: Engagements panel or right-click the line).";
+  } else if (kind === "channel") {
+    options = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => [String(n), "CH" + n + (n === 6 ? " (ATC)" : n >= 7 ? " (P" + (n - 6) + ")" : "")]);
+    key = "ch"; what.textContent = "Channel";
+    hint.textContent = "Press to transmit on this channel of your SRS app.";
+  } else if (kind === "filter") {
+    options = filters; key = "name"; what.textContent = "Filter";
+    hint.textContent = "Toggles this filter on every GCI map.";
+  } else {
+    document.getElementById("row").style.display = "none";
+    hint.textContent = "Nothing to set for this key.";
+    return;
+  }
+  current = String(settings[key] ?? options[0][0]);
+  pick.innerHTML = options.map(([v, t]) => `<option value="${v}"${v === current ? " selected" : ""}>${t}</option>`).join("");
+  pick.onchange = () => {
+    settings[key] = key === "name" ? pick.value : Number(pick.value);
+    socket.send(JSON.stringify({ event: "setSettings", context: uuid, payload: settings }));
+  };
+}
+</script>
+</body>
+</html>

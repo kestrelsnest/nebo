@@ -1,0 +1,61 @@
+NEBO __VERSION__ - PILOT DTC HOOK
+
+Controllers on a NEBO server build data cartridges (F/A-18C, F-16C, F-14B(U)) and push
+them to you. This hook receives them. You need it only on servers that use NEBO.
+In the F-16C and F/A-18C it can also show your controllers what your targeting pod is looking at
+(optional, see DESIGNATIONS below).
+
+COMING FROM OVERSEER OR EAGLE'S NEST (the old names)
+NEBO is the same project renamed. Keep only one DTC hook in Scripts\Hooks: copy your server
+lines into NEBO-DTC.lua, then delete Overseer-DTC.lua and EaglesNest-DTC.lua (both would run).
+With designations, replace Scripts\Overseer-Export.lua (or EaglesNest-Export.lua) by
+NEBO-Export.lua and change its line in Export.lua. Cartridges are now saved as NEBO_<jet>.dtc;
+Overseer_*.dtc and EaglesNest_*.dtc can be deleted.
+
+INSTALL
+1. Open NEBO-DTC.lua in a text editor and list your NEBO servers, one line each
+   with its address and port (your server admin may already have filled in theirs):
+     local SERVERS = {
+         { host = "kestrel.example.net", port = 10320 },
+         { host = "203.0.113.7", port = 10309 },
+     }
+   One hook covers every server you fly on: it finds the one you are on by itself.
+2. Copy it into  Saved Games\DCS\Scripts\Hooks  (make the Hooks folder if it is missing).
+   Upgrading from a hook with one SERVER line: replace that file, and keep only one
+   NEBO-DTC*.lua in the folder.
+3. Restart DCS.
+
+USE
+- Join the server and choose a side (the spawn dialog is enough; dynamic slots work).
+- After a controller pushes (within about 10 s per jet), click DTC in the spawn dialog or the
+  briefing and load "NEBO_FA-18C_hornet", "NEBO_F-16C_50" or "NEBO_F-14BU".
+- DCS applies a cartridge at spawn: one pushed while you fly is for your next spawn.
+- Nothing is written until a controller pushes. No password: the server answers only players
+  on it, with their own side's cartridges.
+
+DESIGNATIONS (F-16C, F/A-18C, optional)
+With NEBO-Export.lua installed as well, your current targeting pod point goes to your
+side's controllers with the hook's asks (every 3.5 s) while the TGP page shows one: its
+coordinates, elevation and track, and with an emitter designated on the HAD page the HTS
+error ellipse and its grade. Controllers see it only if they switch it on (their TGP button);
+they can put a threat on it. Only your own displays are read; nothing about other aircraft.
+1. Copy NEBO-Export.lua into  Saved Games\DCS\Scripts
+2. Open Saved Games\DCS\Scripts\Export.lua (make it if missing) and add this line at the
+   end, keeping the lines already there (SRS, DCS-BIOS, ...):
+     pcall(function() dofile(lfs.writedir()..[[Scripts\NEBO-Export.lua]]) end)
+3. Restart DCS. In the F-16: put the TGP page on an MFD; a HAD designation (TMS up) slaves the
+   pod to the emitter, so its estimate goes too. In the F/A-18C: keep the ATFLIR page on a DDI
+   (SETUP: coordinates ALL or L/L); the point goes while the pod tracks or has a target (the page
+   shows "TGT" range), not while it only slews. The HARM TOO and RWR pages show no positions, so
+   nothing is sent from them.
+IC-safe: both files live in Saved Games and only read what DCS offers export scripts; it works
+with the server's own-ship export switched off. To stop it, delete that line.
+
+PROBLEMS
+Search Saved Games\DCS\Logs\dcs.log for "NEBO DTC": it says whether it is connected,
+has no address set, is still looking for your server among several, or cannot reach a server
+(the server's port, 10309 unless the admin chose another, must be open to you).
+
+UNINSTALL
+Delete Saved Games\DCS\Scripts\Hooks\NEBO-DTC.lua, and for designations the line in
+Export.lua and Saved Games\DCS\Scripts\NEBO-Export.lua.

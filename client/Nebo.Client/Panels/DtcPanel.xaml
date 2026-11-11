@@ -1,0 +1,425 @@
+<UserControl x:Class="Nebo.Client.Panels.DtcPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Nebo.Client.Panels">
+    <DockPanel Margin="8">
+        <!-- The cartridge -->
+        <StackPanel DockPanel.Dock="Top">
+            <DockPanel>
+                <TextBlock Text="Cartridge" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <Button DockPanel.Dock="Right" Content="Save as…" Padding="8,1" Margin="4,0,0,0" Click="Save_Click"
+                        ToolTip="Save the cartridge as a .dtc file (DCS's DTC manager can open it)"/>
+                <Button DockPanel.Dock="Right" Content="Open…" Padding="8,1" Margin="4,0,0,0" Click="Open_Click"
+                        ToolTip="Open a .dtc file (F/A-18C, F-16C or F-14B(U)), e.g. from Saved Games\DCS\DTC: it becomes that jet's cartridge"/>
+                <Button DockPanel.Dock="Right" Content="New" Padding="8,1" Margin="4,0,0,0" Click="New_Click"
+                        ToolTip="New cartridges with DCS's defaults, for every jet"/>
+                <ComboBox x:Name="AircraftBox" DockPanel.Dock="Right" Width="86" Margin="4,0,0,0" SelectionChanged="AircraftBox_Changed"
+                          ToolTip="The jet whose cartridge the tabs show (each jet keeps its own; Push sends each pilot the one of their aircraft)"/>
+                <TextBox x:Name="NameBox" LostFocus="Name_LostFocus" ToolTip="The cartridge's name"/>
+            </DockPanel>
+            <TextBlock x:Name="InfoText" Foreground="{DynamicResource Nebo.TextDim}" Margin="0,3,0,0"/>
+            <CheckBox x:Name="ShareBox" Content="Same points for every jet" Margin="0,4,0,0" Click="Share_Click"
+                      ToolTip="Route, free points (GPS / DEST / additional), lines and threat rings drawn for one jet go into the others' cartridges too; each keeps its own settings and its points' own details"/>
+            <TextBlock x:Name="ShareText" Foreground="{DynamicResource Nebo.TextDim}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+            <DockPanel Margin="0,6,0,0">
+                <TextBlock Text="Departure" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <Button DockPanel.Dock="Right" Content="Apply" Padding="8,1" Margin="4,0,0,0" Click="Departure_Click"
+                        ToolTip="F/A-18C: TACAN (and ICLS for a carrier) from the field or ship, and waypoint 1 on it. F-16C, F-14: the first steerpoint / waypoint on it"/>
+                <ComboBox x:Name="DepartureBox" DisplayMemberPath="Label" DropDownOpened="DepartureBox_DropDownOpened"/>
+            </DockPanel>
+        </StackPanel>
+
+        <!-- Recipients and push -->
+        <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+            <TextBlock Text="Send to" FontWeight="SemiBold" Margin="0,0,0,3"/>
+            <ListBox x:Name="PilotList" Height="110" SelectionMode="Multiple"
+                     ToolTip="Pilots of your side, also those still in the spawn dialog (dynamic slots)"/>
+            <WrapPanel x:Name="PackageBoxes" Margin="0,4,0,0"/>
+            <DockPanel Margin="0,6,0,0">
+                <Button x:Name="PushButton" DockPanel.Dock="Right" Content="Push" Width="90" FontWeight="SemiBold" Click="Push_Click"
+                        ToolTip="Each selected pilot (and package member) gets the cartridge of the jet they fly; one still choosing a spawn gets every jet's. It replaces their NEBO cartridge"/>
+                <TextBlock x:Name="PushStatus" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource Nebo.TextDim}"/>
+            </DockPanel>
+        </StackPanel>
+
+        <!-- What a right-click on the map does, and points by typed coordinates -->
+        <StackPanel x:Name="PointTools" DockPanel.Dock="Top" Margin="0,8,0,0">
+            <DockPanel>
+                <TextBlock Text="Right-click" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <RadioButton x:Name="ModeAdd" Content="Add" IsChecked="True" Margin="0,0,10,0" VerticalAlignment="Center" Click="Mode_Click"
+                             ToolTip="Right-click the map: a new point of the open tab; on a point, its menu"/>
+                <RadioButton x:Name="ModeDelete" Content="Delete" Margin="0,0,10,0" VerticalAlignment="Center" Click="Mode_Click"
+                             ToolTip="Right-click a point on the map: it is deleted"/>
+                <TextBlock x:Name="ModeHint" VerticalAlignment="Center" Foreground="{DynamicResource Nebo.TextDim}"/>
+            </DockPanel>
+            <DockPanel Margin="0,4,0,0">
+                <TextBlock Text="Coordinates" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <Button DockPanel.Dock="Right" x:Name="CoordMove" Content="Move selected" Padding="8,1" Margin="4,0,0,0" Click="CoordMove_Click"
+                        ToolTip="Move the one selected point there"/>
+                <Button DockPanel.Dock="Right" Content="Add" Padding="8,1" Margin="4,0,0,0" Click="CoordAdd_Click"
+                        ToolTip="A new point of the open tab there (Enter)"/>
+                <TextBox x:Name="CoordBox" KeyDown="CoordBox_KeyDown" FontFamily="Consolas"
+                         ToolTip="N41 40.123 E44 56.789 · N 41°40'07&quot; E 44°56'27&quot; · 41.669, 44.955 · MGRS 38T LM 12345 67890"/>
+            </DockPanel>
+            <TextBlock x:Name="CoordStatus" Foreground="{DynamicResource Nebo.TextDim}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <Grid>
+        <local:ViperTabs x:Name="ViperTabs" Margin="0,8,0,0" Visibility="Collapsed"/>
+        <local:TomcatTabs x:Name="TomcatTabs" Margin="0,8,0,0" Visibility="Collapsed"/>
+        <TabControl x:Name="EditorTabs" Margin="0,8,0,0" SelectionChanged="EditorTabs_SelectionChanged">
+            <!-- Waypoints -->
+            <TabItem Header="Waypoints">
+                <DockPanel Margin="4">
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Build" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <Button Content="Route 1" Padding="8,1" Tag="1" Click="Build_Click"
+                                    ToolTip="Route 1 from all waypoints in the list's order (the first 15)"/>
+                            <Button Content="Route 2" Padding="8,1" Margin="4,0,0,0" Tag="2" Click="Build_Click"/>
+                            <Button Content="Route 3" Padding="8,1" Margin="4,0,0,0" Tag="3" Click="Build_Click"/>
+                            <Button Content="Delete" Padding="8,1" Margin="14,0,0,0" Click="Delete_Click"
+                                    ToolTip="Delete the selected waypoints (Delete key)"/>
+                        </StackPanel>
+                        <TextBlock Foreground="{DynamicResource Nebo.TextDim}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                   Text="Right-click the map to add a waypoint; drag to move. Ctrl/Shift picks several (list or map), dragging moves them all. Drag in the list to change the order (renumbers)."/>
+                    </StackPanel>
+                    <!-- The selected waypoint -->
+                    <Grid x:Name="PointEditor" DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                        </Grid.RowDefinitions>
+                        <TextBlock x:Name="PointTitle" Grid.ColumnSpan="4" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <TextBlock Grid.Row="1" Text="Label" VerticalAlignment="Center" Margin="0,0,6,4"/>
+                        <TextBox x:Name="LabelBox" Grid.Row="1" Grid.Column="1" MaxLength="5" Margin="0,0,8,4" LostFocus="Point_LostFocus"
+                                 ToolTip="Up to 5 letters, shown beside the waypoint"/>
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="Note" VerticalAlignment="Center" Margin="0,0,6,4"/>
+                        <TextBox x:Name="NoteBox" Grid.Row="1" Grid.Column="3" Margin="0,0,0,4" LostFocus="Point_LostFocus"/>
+                        <TextBlock Grid.Row="2" Text="Altitude" VerticalAlignment="Center" Margin="0,0,6,4"/>
+                        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,8,4">
+                            <TextBox x:Name="AltBox" Width="70" LostFocus="Point_LostFocus"/>
+                            <TextBlock Text="ft" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                        </StackPanel>
+                        <ComboBox x:Name="AltTypeBox" Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,0,0,4" SelectionChanged="AltType_Changed">
+                            <ComboBoxItem Content="Barometric (MSL)"/>
+                            <ComboBoxItem Content="Radar (AGL)"/>
+                        </ComboBox>
+                        <StackPanel Grid.Row="3" Grid.ColumnSpan="4" Orientation="Horizontal">
+                            <TextBlock Text="In route" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <CheckBox x:Name="R1Box" Content="1" Margin="0,0,10,0" Click="Route_Click" Tag="1"/>
+                            <CheckBox x:Name="R2Box" Content="2" Margin="0,0,10,0" Click="Route_Click" Tag="2"/>
+                            <CheckBox x:Name="R3Box" Content="3" Click="Route_Click" Tag="3"/>
+                        </StackPanel>
+                    </Grid>
+                    <ListBox x:Name="PointList" SelectionMode="Extended" SelectionChanged="PointList_SelectionChanged" FontFamily="Consolas" AllowDrop="True" KeyDown="List_KeyDown"
+                             PreviewMouseLeftButtonDown="PointList_PreviewMouseLeftButtonDown" PreviewMouseMove="PointList_PreviewMouseMove"
+                             DragOver="PointList_DragOver" Drop="PointList_Drop"/>
+                </DockPanel>
+            </TabItem>
+
+            <!-- Routes -->
+            <TabItem Header="Routes">
+                <DockPanel Margin="4">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
+                        <RadioButton x:Name="Route1" Content="Route 1" IsChecked="True" Margin="0,0,10,0" Checked="RouteTab_Checked"/>
+                        <RadioButton x:Name="Route2" Content="Route 2" Margin="0,0,10,0" Checked="RouteTab_Checked"/>
+                        <RadioButton x:Name="Route3" Content="Route 3" Checked="RouteTab_Checked"/>
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
+                        <Button Content="▲" Width="28" Click="RouteUp_Click"/>
+                        <Button Content="▼" Width="28" Margin="4,0,12,0" Click="RouteDown_Click"/>
+                        <TextBlock Text="Speed" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBox x:Name="SpeedBox" Width="60" LostFocus="Speed_LostFocus"/>
+                        <TextBlock Text="kt" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                        <TextBlock x:Name="RouteTotal" VerticalAlignment="Center" Margin="16,0,0,0" FontWeight="SemiBold"/>
+                    </StackPanel>
+                    <ListBox x:Name="RouteList" FontFamily="Consolas" SelectionChanged="RouteList_SelectionChanged"
+                             ToolTip="The route's waypoints in order (at most 15); add them in the Waypoints tab"/>
+                </DockPanel>
+            </TabItem>
+
+            <!-- NAV settings -->
+            <TabItem Header="NAV settings">
+                <Grid Margin="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/><ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="TACAN" VerticalAlignment="Center" Margin="0,0,10,6"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBox x:Name="TacanChannel" Width="40" LostFocus="Settings_LostFocus"/>
+                        <ComboBox x:Name="TacanBand" Width="44" Margin="4,0,0,0" SelectionChanged="Settings_Changed">
+                            <ComboBoxItem Content="X"/><ComboBoxItem Content="Y"/>
+                        </ComboBox>
+                        <ComboBox x:Name="TacanMode" Width="64" Margin="4,0,0,0" SelectionChanged="Settings_Changed">
+                            <ComboBoxItem Content="T/R"/><ComboBoxItem Content="REC"/><ComboBoxItem Content="A/A"/>
+                        </ComboBox>
+                        <CheckBox x:Name="TacanOn" Content="on" Margin="8,0,0,0" VerticalAlignment="Center" Click="Settings_Click"/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="1" Text="ICLS" VerticalAlignment="Center" Margin="0,0,10,6"/>
+                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBox x:Name="IclsChannel" Width="40" LostFocus="Settings_LostFocus"/>
+                        <CheckBox x:Name="IclsOn" Content="on" Margin="8,0,0,0" VerticalAlignment="Center" Click="Settings_Click"/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="2" Text="ACLS" VerticalAlignment="Center" Margin="0,0,10,6"/>
+                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBox x:Name="AclsFreq" Width="64" LostFocus="Settings_LostFocus"/>
+                        <TextBlock Text="MHz" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                        <CheckBox x:Name="AclsOn" Content="on" Margin="8,0,0,0" VerticalAlignment="Center" Click="Settings_Click"/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="3" Text="Home waypoint" VerticalAlignment="Center" Margin="0,0,10,6"/>
+                    <TextBox x:Name="HomeWp" Grid.Row="3" Grid.Column="1" Width="40" HorizontalAlignment="Left" Margin="0,0,0,6" LostFocus="Settings_LostFocus"/>
+                    <TextBlock Grid.Row="4" Text="Altitude warning" VerticalAlignment="Center" Margin="0,0,10,6"/>
+                    <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock Text="baro" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <TextBox x:Name="WarnBaro" Width="56" LostFocus="Settings_LostFocus"/>
+                        <TextBlock Text="radar" VerticalAlignment="Center" Margin="10,0,4,0"/>
+                        <TextBox x:Name="WarnRadar" Width="56" LostFocus="Settings_LostFocus"/>
+                        <TextBlock Text="ft" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- COMM 1 / 2 presets -->
+            <TabItem Header="COMM">
+                <DockPanel Margin="4">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
+                        <RadioButton x:Name="Comm1" Content="COMM 1" IsChecked="True" Margin="0,0,10,0" Checked="CommRadio_Checked"/>
+                        <RadioButton x:Name="Comm2" Content="COMM 2" Margin="0,0,14,0" Checked="CommRadio_Checked"/>
+                        <CheckBox x:Name="GuardBox" Content="Guard receiver" VerticalAlignment="Center" Click="Guard_Click"/>
+                        <Button Content="Fill from mission" Padding="8,1" Margin="14,0,0,0" Click="FillComm_Click"
+                                ToolTip="Presets 1… from your side's AWACS, tankers and airfield towers (as the server knows them)"/>
+                    </StackPanel>
+                    <TextBlock DockPanel.Dock="Top" Foreground="{DynamicResource Nebo.TextDim}" Margin="0,0,0,4" TextWrapping="Wrap"
+                               Text="30–399.975 MHz. FM only in 30–88 and 156–174, AM only in 88–136; either in the rest (as DCS)."/>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <Grid x:Name="CommGrid">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="32"/><ColumnDefinition Width="80"/><ColumnDefinition Width="56"/><ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                        </Grid>
+                    </ScrollViewer>
+                </DockPanel>
+            </TabItem>
+
+            <!-- GPS waypoints -->
+            <TabItem Header="GPS">
+                <DockPanel Margin="4">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
+                        <Button Content="Delete" Padding="8,1" Click="GpsDelete_Click" ToolTip="Delete the selected GPS waypoints (Delete key)"/>
+                        <TextBlock Foreground="{DynamicResource Nebo.TextDim}" Margin="10,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap"
+                                   Text="Right-click the map to add a GPS waypoint (1–200). Ctrl/Shift picks several."/>
+                    </StackPanel>
+                    <StackPanel x:Name="GpsEditor" DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
+                        <TextBlock Text="Text" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <TextBox x:Name="GpsText" Width="60" MaxLength="5" LostFocus="Gps_LostFocus"/>
+                        <TextBlock Text="Note" VerticalAlignment="Center" Margin="10,0,4,0"/>
+                        <TextBox x:Name="GpsNote" Width="120" LostFocus="Gps_LostFocus"/>
+                        <TextBlock Text="Alt" VerticalAlignment="Center" Margin="10,0,4,0"/>
+                        <TextBox x:Name="GpsAlt" Width="60" LostFocus="Gps_LostFocus"/>
+                        <TextBlock Text="ft" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                    </StackPanel>
+                    <ListBox x:Name="GpsList" FontFamily="Consolas" SelectionMode="Extended" SelectionChanged="GpsList_SelectionChanged" KeyDown="List_KeyDown"/>
+                </DockPanel>
+            </TabItem>
+
+            <!-- SA page -->
+            <TabItem Header="SA">
+                <DockPanel Margin="4">
+                    <!-- The type worked on: the list shows it, right-clicks place it -->
+                    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <RadioButton x:Name="SaThreat" Content="Threat rings" IsChecked="True" Margin="0,0,10,0" Checked="SaKind_Checked"/>
+                        <RadioButton x:Name="SaCap" Content="CAPs" Margin="0,0,10,0" Checked="SaKind_Checked"/>
+                        <RadioButton x:Name="SaCorridor" Content="Corridors" Margin="0,0,10,0" Checked="SaKind_Checked"/>
+                        <RadioButton x:Name="SaFaor" Content="FAOR" Margin="0,0,10,0" Checked="SaKind_Checked"/>
+                        <RadioButton x:Name="SaFlot" Content="FLOT" Checked="SaKind_Checked"/>
+                    </WrapPanel>
+                    <DockPanel x:Name="SaRingRow" DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <Button DockPanel.Dock="Right" Content="From picture" Padding="8,1" Margin="4,0,0,0" Click="SaFromPicture_Click"
+                                ToolTip="Threat rings for the threats your side knows (identified, and placed by controllers), as the server sends them"/>
+                        <TextBlock Text="New ring type" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox x:Name="SaRingType" DisplayMemberPath="Label" SelectionChanged="SaRingType_Changed"/>
+                    </DockPanel>
+                    <!-- Lines: the one new points go on -->
+                    <DockPanel x:Name="SaLineRow" DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <TextBlock Text="Line" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <Button DockPanel.Dock="Right" Content="Delete line" Padding="8,1" Margin="4,0,0,0" Click="SaDeleteLine_Click"/>
+                        <Button DockPanel.Dock="Right" Content="New line" Padding="8,1" Margin="4,0,0,0" Click="SaNewLine_Click"
+                                ToolTip="The next right-click on the map starts a new line"/>
+                        <ComboBox x:Name="SaLineBox" SelectionChanged="SaLineBox_Changed"/>
+                    </DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <Button DockPanel.Dock="Right" Content="Delete" Padding="8,1" Click="SaDelete_Click" ToolTip="Delete the selected objects or points (Delete key)"/>
+                        <TextBlock x:Name="SaHint" Foreground="{DynamicResource Nebo.TextDim}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <Expander DockPanel.Dock="Bottom" Header="SA settings (declutter, sensors)" Margin="0,6,0,0">
+                        <WrapPanel x:Name="SaSettings" Margin="4"/>
+                    </Expander>
+                    <!-- The selected object -->
+                    <StackPanel x:Name="SaEditor" DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                        <TextBlock x:Name="SaTitle" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <WrapPanel x:Name="SaThreatFields">
+                            <ComboBox x:Name="SaEditType" Width="230" DisplayMemberPath="Label" Margin="0,0,6,0"/>
+                            <TextBlock Text="Text" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBox x:Name="SaEditText" Width="56" MaxLength="5" Margin="0,0,6,0"/>
+                            <TextBlock Text="Radius" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBox x:Name="SaEditRadius" Width="50"/>
+                            <TextBlock Text="NM" VerticalAlignment="Center" Margin="4,0,8,0"/>
+                            <Button Content="Apply" Padding="8,1" Click="SaApply_Click"/>
+                        </WrapPanel>
+                        <WrapPanel x:Name="SaCapFields">
+                            <TextBlock Text="Course" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBox x:Name="SaEditCourse" Width="44"/>
+                            <TextBlock Text="°  Length" VerticalAlignment="Center" Margin="4,0,4,0"/>
+                            <TextBox x:Name="SaEditLength" Width="44"/>
+                            <TextBlock Text="NM  Diameter" VerticalAlignment="Center" Margin="4,0,4,0"/>
+                            <TextBox x:Name="SaEditDiameter" Width="44"/>
+                            <TextBlock Text="NM" VerticalAlignment="Center" Margin="4,0,8,0"/>
+                            <ComboBox x:Name="SaEditTurn" Width="70" Margin="0,0,8,0">
+                                <ComboBoxItem Content="Left"/><ComboBoxItem Content="Right"/>
+                            </ComboBox>
+                            <Button Content="Apply" Padding="8,1" Click="SaApply_Click"/>
+                        </WrapPanel>
+                        <DockPanel x:Name="SaNoteFields" Margin="0,4,0,0">
+                            <TextBlock Text="Note" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBox x:Name="SaEditNote" LostFocus="SaNote_LostFocus"/>
+                        </DockPanel>
+                    </StackPanel>
+                    <ListBox x:Name="SaList" FontFamily="Consolas" SelectionMode="Extended" SelectionChanged="SaList_SelectionChanged" KeyDown="List_KeyDown"/>
+                </DockPanel>
+            </TabItem>
+
+            <!-- HARM -->
+            <TabItem Header="HARM">
+                <DockPanel Margin="4">
+                    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+                        <TextBlock Text="Mode" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <ComboBox x:Name="HarmMode" Width="60" Margin="0,0,10,0" SelectionChanged="Harm_Changed"/>
+                        <TextBlock Text="Threat class" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <ComboBox x:Name="HarmClass" Width="190" DisplayMemberPath="Text" Margin="0,0,10,0" SelectionChanged="Harm_Changed"/>
+                        <TextBlock Text="Pull-up cue" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <ComboBox x:Name="HarmPullup" Width="60" Margin="0,0,10,0" SelectionChanged="Harm_Changed"/>
+                        <CheckBox x:Name="HarmLimit" Content="LIMIT" VerticalAlignment="Center" Margin="0,0,10,0" Click="Harm_Click"/>
+                        <CheckBox x:Name="HarmPullback" Content="Pullback" VerticalAlignment="Center" Margin="0,0,10,0" Click="Harm_Click"/>
+                        <TextBlock Text="Target code" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <TextBox x:Name="HarmCode" Width="50" LostFocus="HarmCode_LostFocus"/>
+                    </WrapPanel>
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
+                        <Button Content="Friendly = my side" Padding="8,1" Click="Friendly_Click"
+                                ToolTip="Your coalition's radars (from NEBO's picture) get the friendly TOO class, every other one the hostile class. Also done for a new cartridge."/>
+                        <TextBlock x:Name="HarmFriendlyStatus" Foreground="{DynamicResource Nebo.TextDim}" VerticalAlignment="Center" Margin="10,0,0,0" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="TOO class of each radar" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                    <DataGrid x:Name="TooGrid" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Radar" Binding="{Binding Radar}" IsReadOnly="True" Width="*"/>
+                            <DataGridTemplateColumn Header="Class" Width="220">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ComboBox ItemsSource="{Binding Choices}" DisplayMemberPath="Text" SelectedItem="{Binding Class, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- CMDS -->
+            <TabItem Header="CMDS">
+                <DockPanel Margin="4">
+                    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <TextBlock Text="Program" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <ComboBox x:Name="CmdsProgram" Width="80" Margin="0,0,10,0" SelectionChanged="CmdsProgram_Changed"/>
+                        <TextBlock Text="Chaff" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <TextBox x:Name="ChaffQty" Width="32" ToolTip="Quantity 0–99"/>
+                        <TextBlock Text="×" VerticalAlignment="Center" Margin="3,0,3,0"/>
+                        <TextBox x:Name="ChaffRepeat" Width="32" ToolTip="Repeat 0–99"/>
+                        <TextBlock Text="every" VerticalAlignment="Center" Margin="4,0,4,0"/>
+                        <TextBox x:Name="ChaffInterval" Width="40" ToolTip="Interval 0.25–5 s (0.25 s steps)"/>
+                        <TextBlock Text="s  Flare" VerticalAlignment="Center" Margin="4,0,4,0"/>
+                        <TextBox x:Name="FlareQty" Width="32"/>
+                        <TextBlock Text="Other 1" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                        <TextBox x:Name="Other1Qty" Width="32"/>
+                        <TextBlock Text="Other 2" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                        <TextBox x:Name="Other2Qty" Width="32"/>
+                        <Button Content="Apply" Padding="8,1" Margin="8,0,0,0" Click="CmdsApply_Click"/>
+                    </WrapPanel>
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock Text="Delay between programs" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox x:Name="CmdsDelay" Width="80" SelectionChanged="CmdsDelay_Changed"/>
+                    </StackPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="AUTO program and threshold of each threat" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                    <DataGrid x:Name="CmdsGrid" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Group" Binding="{Binding Category}" IsReadOnly="True" Width="60"/>
+                            <DataGridTextColumn Header="Threat" Binding="{Binding Group}" IsReadOnly="True" Width="*"/>
+                            <DataGridTemplateColumn Header="Program" Width="90">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ComboBox ItemsSource="{Binding Programs}" SelectedItem="{Binding Program, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Threshold" Width="90">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ComboBox ItemsSource="{Binding Thresholds}" SelectedItem="{Binding Threshold, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- RWR -->
+            <TabItem Header="RWR">
+                <DockPanel Margin="4">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock Text="Table" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox x:Name="RwrTable" Width="80" SelectionChanged="RwrTable_Changed"/>
+                        <TextBlock Foreground="{DynamicResource Nebo.TextDim}" VerticalAlignment="Center" Margin="10,0,0,0"
+                                   Text="Lower priority number = shown first."/>
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
+                        <Button Content="Friendly = my side" Padding="8,1" Click="Friendly_Click"
+                                ToolTip="Friend flag on for your coalition's emitters (from NEBO's picture), off for every other one, in all tables. Also done for a new cartridge."/>
+                        <TextBlock x:Name="RwrFriendlyStatus" Foreground="{DynamicResource Nebo.TextDim}" VerticalAlignment="Center" Margin="10,0,0,0" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <DataGrid x:Name="RwrGrid" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Priority" Binding="{Binding Priority, UpdateSourceTrigger=LostFocus}" Width="60"/>
+                            <DataGridTextColumn Header="Emitter" Binding="{Binding Group}" IsReadOnly="True" Width="*"/>
+                            <DataGridCheckBoxColumn Header="Display" Binding="{Binding Display, UpdateSourceTrigger=PropertyChanged}" Width="60"/>
+                            <DataGridCheckBoxColumn Header="Friend" Binding="{Binding Friend, UpdateSourceTrigger=PropertyChanged}" Width="55"/>
+                            <DataGridCheckBoxColumn Header="Jammer" Binding="{Binding Jammer, UpdateSourceTrigger=PropertyChanged}" Width="60"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <!-- TACAN stations -->
+            <TabItem Header="TACAN">
+                <DockPanel Margin="4">
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <Button DockPanel.Dock="Right" Content="Add" Padding="8,1" Margin="4,0,0,0" Click="TacanAdd_Click"/>
+                        <ComboBox x:Name="TacanPick" DropDownOpened="TacanPick_DropDownOpened"
+                                  ToolTip="The map's TACAN stations (DCS's beacons); at most 10 in the cartridge"/>
+                    </DockPanel>
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
+                        <Button Content="▲" Width="28" Click="TacanUp_Click"/>
+                        <Button Content="Remove" Padding="8,1" Margin="4,0,0,0" Click="TacanRemove_Click"/>
+                    </StackPanel>
+                    <ListBox x:Name="TacanList" FontFamily="Consolas"/>
+                </DockPanel>
+            </TabItem>
+        </TabControl>
+        </Grid>
+    </DockPanel>
+</UserControl>

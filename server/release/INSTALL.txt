@@ -1,0 +1,115 @@
+NEBO server install (DCS dedicated server or a hosted game)
+==================================================================
+
+NEBO adds a hook to the DCS server that controllers connect to with the NEBO
+client (ATC/GCI). Nothing in your missions changes, MissionScripting.lua stays as it is, and
+there is nothing to run: only files to copy. Foothold missions are detected by themselves.
+
+THE SETUP (easiest)
+NEBO-Setup-__VERSION__.exe (Releases page) does the steps below: tick "DCS server hook", pick
+the server's Saved Games folder, the port (it can open it in the Windows firewall) and five
+settings. Stop the server first. It writes the port and settings into Config\NEBO.lua (only
+those lines; passwords and Discord stay as they are), removes 0.15.x (DCB) files, and
+running it again updates. Uninstalling removes only what it copied, never NEBO.lua.
+Silent (scripts, many servers; settings left out keep what NEBO.lua has):
+  NEBO-Setup-__VERSION__.exe /VERYSILENT /COMPONENTS=server /SERVERDIRS="C:\Users\me\Saved Games\DCS.server"
+     [/PORT=10309] [/FIREWALL=1] [/ENEMY_GROUND=auto|true|false] [/IDENTIFICATION=auto|manual]
+     [/RADAR_SCAN=true|false] [/ALLOW_FLYING_CONTROLLERS=false|true] [/DTC=true|false]
+  (several folders separated by ;   /LOG="setup.log" writes a log)
+
+INSTALL BY HAND
+1. Stop the DCS server.
+2. Open the server's Saved Games folder: the one holding Config, Logs and Missions, e.g.
+     C:\Users\<user>\Saved Games\DCS.server   or   ...\DCS.openbeta_server   or   ...\DCS
+3. Copy everything inside "copy-into-saved-games" into it (merge the folders).
+4. Open TCP port 10309 for controllers (PowerShell as administrator):
+     New-NetFirewallRule -DisplayName "NEBO" -Direction Inbound -Protocol TCP -LocalPort 10309 -Action Allow
+   (A hosting provider may also need the port opened in its own panel.)
+5. Start the server. Done.
+
+The first start creates Config\NEBO.lua with a random server password ("password"). Give it to
+your controllers; they choose blue or red after logging in. Change it there if you like
+(restart the server afterwards). An existing NEBO.lua is never replaced: if it has an error,
+dcs.log says so and logins stay closed until it is fixed.
+
+DISCORD LOGIN (recommended)
+Only members of your Discord server with a controller role get in, checked before the password:
+1. https://discord.com/developers/applications -> New Application. Copy the Application ID.
+   OAuth2: Reset Secret, copy the Client Secret; Redirects: add  http://127.0.0.1  and save.
+2. In Discord (User Settings -> Advanced -> Developer Mode on): right-click your server ->
+   Copy Server ID; Server Settings -> Roles -> right-click the controller role -> Copy Role ID.
+3. In Config\NEBO.lua, all in quotes:
+     discord_client_id = "<Application ID>"
+     discord_secret    = "<Client Secret>"     (stays on the server)
+     discord_guild     = "<Server ID>"
+     discord_roles     = { "<Role ID>" }
+   Restart. dcs.log shows "Discord login on". The server must reach discord.com (HTTPS).
+Controllers then click Authorize in their Discord app when connecting. A controller whose role
+is removed is disconnected within 5 minutes.
+
+Check: Logs\dcs.log shows
+     NEBO (Main): hook loaded, dll __VERSION__
+     NEBO (Main): listening on port 10309
+
+UPDATE
+Stop the server, copy "copy-into-saved-games" again (your Config\NEBO.lua is kept), start it.
+From 0.9 to 0.10: add  password = "..."  and (optionally) the Discord lines above to your
+NEBO.lua - see Config\NEBO.example.lua. Until then the old blue/red passwords work as the
+server password. With Discord on, clients older than 0.10 are refused: update them too.
+From 0.10 to 0.11: the server no longer computes an RWR picture; a line  rwr = ...  in your
+NEBO.lua is ignored and can be deleted.
+From 0.11 to 0.14: nothing to change in NEBO.lua (dtc = true is the default). Update the clients
+too (older ones have no DTC tab), and give pilots the new NEBO-DTC.lua from
+NEBO-Pilot-__VERSION__.zip.
+From 0.14.0 to 0.14.1: copy the package over as usual, nothing to change in NEBO.lua (AEGIS
+ships now refresh every 4 s instead of every second). The pilot hook is unchanged.
+From 0.14.1 to 0.14.2: nothing changes on the server; this release is for the clients.
+From 0.14.2 to 0.14.3: nothing changes on the server. The pilot hook takes a list of servers
+(SERVERS = { ... }): pilots on several NEBO servers need only one hook file.
+From 0.15.1 to 0.15.2: copy the package over as usual, nothing to change in NEBO.lua (an enemy
+ground launch at a side's unit now gives that side's controllers a shared "SA-?" threat mark).
+The pilot hook is unchanged.
+From 0.15.x to 0.16.0 (renamed to NEBO; before it was Overseer, code name DCB):
+  1. Stop the server and delete the old files: Scripts\Hooks\DCB-hook.lua and Mods\Services\DCB.
+     (Left in place, the old hook opens the same port; dcs.log then warns about it.)
+  2. Copy "copy-into-saved-games" as usual and start the server.
+  On its first start NEBO copies your Config\DCB.lua to Config\NEBO.lua (same passwords and
+  Discord settings) and moves the DCB data folder to NEBO; dcs.log says so. The old DCB.lua can
+  then be deleted. Controllers need the 0.16.0 client; older clients cannot connect. Pilots
+  replace their DTC hook with NEBO-DTC.lua (see PILOT.txt).
+
+PILOT SYNC (data cartridges, optional)
+Controllers build whole data cartridges (F/A-18C, F-16C, F-14B(U)) in the client's DTC tab and
+push them to pilots. For that, pilots need the DTC hook, in its own package
+NEBO-Pilot-__VERSION__.zip (with PILOT.txt for the pilots):
+1. Open NEBO-DTC.lua in a text editor and fill in your server's line (pilots on several
+   NEBO servers add a line for each; the hook finds the one they are on):
+     local SERVERS = {
+         { host = "your.server.address", port = 10309 },
+     }
+2. Give that file to your pilots. Each copies it into Saved Games\DCS\Scripts\Hooks and
+   restarts DCS.
+3. After a controller's push (within about 10 s per jet) they click DTC in the spawn dialog or
+   the briefing and load "NEBO_FA-18C_hornet", "NEBO_F-16C_50" or "NEBO_F-14BU".
+Nothing is written until a controller pushes. No password: the server answers only players who
+chose a side on it (the spawn dialog is enough, dynamic slots work), with their own side's
+cartridges (port 10309, the same as controllers). Switch it off with  dtc = false  in NEBO.lua.
+
+UNINSTALL
+Delete Mods\Services\NEBO, Scripts\Hooks\NEBO-hook.lua, Config\NEBO.lua and the NEBO folder.
+
+GOOD TO KNOW
+- Security: the password never travels (clients prove it against a new challenge each time),
+  but the picture itself is plain TCP. Limit the firewall rule to your controllers' addresses
+  (add  -RemoteAddress 203.0.113.5,198.51.100.7) or use a VPN (Tailscale, ZeroTier, WireGuard).
+- Each controller sees only the side they joined (fog of war). With Discord login every login
+  and command in dcs.log carries the controller's Discord name.
+- Controllers don't fly: a login from the address of a player in a cockpit is refused.
+- Enemy ground units show on radar only in missions dated 2012 or later (enemy_ground in
+  NEBO.lua); before that controllers find SAMs with pilots' RWR calls.
+- Terrain data for Caucasus, Syria and the Marianas is included; other terrains are sampled once
+  on their first mission (in the background) and kept in the NEBO folder.
+- Controller actions (text to a player, F10 marks) are rate-limited and written to dcs.log.
+- Problems: search dcs.log for "NEBO".
+- Analytics and website export (on by default, switch off in NEBO.lua) are local files in the
+  NEBO folder; nothing is sent anywhere. Back up NEBO\analytics.key (it makes the player ids).

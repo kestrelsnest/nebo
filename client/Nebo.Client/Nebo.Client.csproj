@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Nebo.Client.Core\Nebo.Client.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dirkster.AvalonDock" Version="5.0.1" />
+    <PackageReference Include="Dirkster.AvalonDock.Serializer.Xml" Version="5.0.1" />
+    <PackageReference Include="Dirkster.AvalonDock.Themes.VS2013" Version="5.0.1" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15" />
+    <!-- Map surface: SKGLElement (Skia on OpenGL) and SKElement (Skia on the CPU). -->
+    <PackageReference Include="SkiaSharp.Views.WPF" Version="3.119.2" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Nebo.Client</AssemblyName>
+    <Product>NEBO ATC/GCI</Product>
+    <Company>Kestrel's Nest Community</Company>
+    <!-- The NEBO version: same as kVersion in server/dll/src/nebo.cpp (server/package.ps1 checks). -->
+    <Version>0.16.0</Version>
+    <ApplicationIcon>Assets\nebo.ico</ApplicationIcon>
+    <!-- SkiaSharp.Views.WPF's OpenGL support depends on OpenTK packaged for .NET Framework only. -->
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\basemap.json" />
+    <!-- Made from branding/ by branding/make-icons.js. -->
+    <Resource Include="Assets\nebo.ico" />
+    <Resource Include="Assets\nebo-dark.png" />
+    <Resource Include="Assets\nebo-light.png" />
+    <!-- Shared with the website: the repository's style/ folder is the one source. -->
+    <EmbeddedResource Include="..\..\style\map-style.json" LogicalName="map-style.json" />
+  </ItemGroup>
+
+</Project>
+
+

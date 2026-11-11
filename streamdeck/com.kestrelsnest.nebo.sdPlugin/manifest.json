@@ -1,0 +1,74 @@
+{
+  "SDKVersion": 2,
+  "Author": "Kestrels Nest",
+  "Name": "NEBO",
+  "Description": "NEBO (DCS ATC/GCI) on your Stream Deck: engagement lines 1–8, SRS channels, labels, workspace and map filters.",
+  "Version": "0.16.0",
+  "Icon": "images/plugin",
+  "Category": "NEBO",
+  "CategoryIcon": "images/category",
+  "CodePathWin": "bin/NeboDeck.exe",
+  "OS": [{ "Platform": "windows", "MinimumVersion": "10" }],
+  "Software": { "MinimumVersion": "6.0" },
+  "Actions": [
+    {
+      "UUID": "com.kestrelsnest.nebo.engagement",
+      "Name": "Engagement",
+      "Tooltip": "Engagement line with this marker (1–8): range, colour by its alert; press to show it on the map",
+      "Icon": "images/action_engagement",
+      "PropertyInspectorPath": "pi/index.html",
+      "States": [{ "Image": "images/key_engagement", "ShowTitle": false }],
+      "SupportedInMultiActions": false
+    },
+    {
+      "UUID": "com.kestrelsnest.nebo.channel",
+      "Name": "SRS channel",
+      "Tooltip": "Your SRS channel (1–10): frequency, role; press to transmit on it",
+      "Icon": "images/action_channel",
+      "PropertyInspectorPath": "pi/index.html",
+      "States": [{ "Image": "images/key_channel", "ShowTitle": false }],
+      "SupportedInMultiActions": false
+    },
+    {
+      "UUID": "com.kestrelsnest.nebo.labels",
+      "Name": "Labels",
+      "Tooltip": "GCI maps' labels: Full → Short → None",
+      "Icon": "images/action_map",
+      "States": [{ "Image": "images/key_map", "ShowTitle": false }],
+      "SupportedInMultiActions": false
+    },
+    {
+      "UUID": "com.kestrelsnest.nebo.labelpos",
+      "Name": "Label position",
+      "Tooltip": "GCI maps' label position: above the aircraft or beside its vector",
+      "Icon": "images/action_map",
+      "States": [{ "Image": "images/key_map", "ShowTitle": false }],
+      "SupportedInMultiActions": false
+    },
+    {
+      "UUID": "com.kestrelsnest.nebo.workspace",
+      "Name": "GCI / ATC",
+      "Tooltip": "Switch between the GCI and ATC workspaces",
+      "Icon": "images/action_map",
+      "States": [{ "Image": "images/key_map", "ShowTitle": false }],
+      "SupportedInMultiActions": false
+    },
+    {
+      "UUID": "com.kestrelsnest.nebo.filter",
+      "Name": "Map filter",
+      "Tooltip": "A GCI map filter on/off: ground units, landed, threat rings, F10 marks, TGP, zones, airfields",
+      "Icon": "images/action_map",
+      "PropertyInspectorPath": "pi/index.html",
+      "States": [{ "Image": "images/key_map", "ShowTitle": false }],
+      "SupportedInMultiActions": false
+    },
+    {
+      "UUID": "com.kestrelsnest.nebo.playersonly",
+      "Name": "Players only (hold)",
+      "Tooltip": "While held: GCI maps show only aircraft flown by people",
+      "Icon": "images/action_players",
+      "States": [{ "Image": "images/key_players", "ShowTitle": false }],
+      "SupportedInMultiActions": false
+    }
+  ]
+}
