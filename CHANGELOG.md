@@ -4,7 +4,24 @@ NEBO ATC/GCI by Kestrel's Nest Community, formerly Overseer and Eagle's Nest (co
 Newest first. Dates are commit dates. "DLL" is the server module (`nebo.dll`, before 0.16.0
 `dcb.dll`), whose version goes up together with the protocol.
 
-## 0.16.0 — unreleased · NEBO
+## 0.16.0 — 2026-11-11 · NEBO
+**One setup**
+- `NEBO-Setup-0.16.0.exe` installs every part for the Windows user: controller app, Stream Deck
+  plugin, pilot hook, DCS server hook. It finds the DCS Saved Games folders, replaces Overseer /
+  Eagle's Nest / DCB files, keeps the pilots' server lists, and for a server asks the port
+  (optionally opened in the firewall) and five settings with pictures of the difference
+  (enemy ground units, identification, radar scan, flying controllers, data cartridges),
+  written to `NEBO.lua` line by line. Running it again updates; uninstalling removes only what
+  it copied. Silent install for admins (INSTALL.txt). Not code-signed yet.
+- The client tells you when a new version is out (asks GitHub once a day; *Settings → General
+  → Updates*) and downloads and runs its setup on a click.
+- The zips stay for copying by hand.
+
+**Fixed**
+- The DTC tab's "Fill from mission" and threats "From picture" had no data since 0.14.0: the
+  server sent the coalition's live DTC data under another message type. Fixed on the server, so
+  0.14 and 0.15 clients get it too.
+
 **Name**
 - Renamed from Overseer to **NEBO ATC/GCI by Kestrel's Nest Community** ("nebo" is "sky" in
   Ukrainian), everywhere, including the installed files:
