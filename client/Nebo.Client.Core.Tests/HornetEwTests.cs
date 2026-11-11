@@ -2,6 +2,7 @@ using Nebo.Client.Core.Dtc;
 
 namespace Nebo.Client.Core.Tests;
 
+[Trait("Needs", "DCS")]  // tables made from a DCS install (DtcTestData); GitHub's build has none
 public class HornetEwTests
 {
     private static HornetEw New() => new(Cartridge.NewDefault(Cartridge.HornetType, "Caucasus"));

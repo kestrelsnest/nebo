@@ -14,7 +14,19 @@ add_custom_command(
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/lua/lua.def)
 add_custom_target(lua_implib DEPENDS ${LUA_IMPLIB})
 
+# Windows version resource (product name and version, as code signing expects), its version
+# read from kVersion in nebo.cpp.
+file(STRINGS src/nebo.cpp NEBO_VERSION_LINE REGEX "kVersion\\[\\] = \"")
+string(REGEX MATCH "\"([0-9]+)\\.([0-9]+)\\.([0-9]+)\"" NEBO_VERSION_QUOTED "${NEBO_VERSION_LINE}")
+if(NOT NEBO_VERSION_QUOTED)
+    message(FATAL_ERROR "kVersion not found in src/nebo.cpp")
+endif()
+set(NEBO_VERSION "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}")
+set(NEBO_VERSION_COMMAS "${CMAKE_MATCH_1},${CMAKE_MATCH_2},${CMAKE_MATCH_3},0")
+configure_file(src/version.rc.in ${CMAKE_CURRENT_BINARY_DIR}/version.rc @ONLY)
+
 add_library(nebo SHARED
+    ${CMAKE_CURRENT_BINARY_DIR}/version.rc
     src/nebo.cpp
     src/net_server.cpp
     src/net_server.h

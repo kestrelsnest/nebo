@@ -2,6 +2,7 @@ using Nebo.Client.Core.Dtc;
 
 namespace Nebo.Client.Core.Tests;
 
+[Trait("Needs", "DCS")]  // tables made from a DCS install (DtcTestData); GitHub's build has none
 public class DtcPlanTests
 {
     private static (double, double) LatLon(double x, double y) => (x / 1e5, y / 1e5);

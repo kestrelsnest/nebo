@@ -41,7 +41,7 @@ jobs:
 
       - name: Build (client, DLL, tests)
         shell: powershell
-        run: .\build.ps1
+        run: .\build.ps1 -NoDcs
 
       - name: Package (zips and setup)
         shell: powershell

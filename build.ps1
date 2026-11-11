@@ -6,7 +6,8 @@
 # and runs the Core tests. One build type: developer aids (--snapshot, render timing) are
 # included and stay off unless asked for on the command line.
 # A running client is closed for the build and started again afterwards.
-param([switch]$SkipTests, [switch]$SkipDll)
+# -NoDcs skips the tests that need a DCS install (data cartridge tables): GitHub's release build.
+param([switch]$SkipTests, [switch]$SkipDll, [switch]$NoDcs)
 $ErrorActionPreference = 'Stop'
 $env:DOTNET_NOLOGO = '1'
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
@@ -47,7 +48,8 @@ Build (Join-Path $root 'tools\DiagramIndexer\DiagramIndexer.csproj') (Join-Path 
 
 if (-not $SkipTests) {
     Write-Host "== tests"
-    dotnet test (Join-Path $root 'client\Nebo.Client.Core.Tests') -c Release -v q -nologo
+    $filter = if ($NoDcs) { @('--filter', 'Needs!=DCS') } else { @() }
+    dotnet test (Join-Path $root 'client\Nebo.Client.Core.Tests') -c Release -v q -nologo @filter
     if ($LASTEXITCODE) { throw 'tests failed' }
 }
 

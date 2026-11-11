@@ -22,6 +22,10 @@ $repo = Split-Path $PSScriptRoot -Parent
 $dll = & (Join-Path $PSScriptRoot 'dll\build.ps1') | Select-Object -Last 1
 $version = [regex]::Match((Get-Content (Join-Path $PSScriptRoot 'dll\src\nebo.cpp') -Raw), 'kVersion\[\] = "([^"]+)"').Groups[1].Value
 if (-not $version) { throw 'version not found in nebo.cpp' }
+foreach ($proj in 'client\Nebo.Client\Nebo.Client.csproj', 'streamdeck\Nebo.StreamDeck\Nebo.StreamDeck.csproj') {
+    $v = [regex]::Match((Get-Content (Join-Path $repo $proj) -Raw), '<Version>([^<]+)</Version>').Groups[1].Value
+    if ($v -ne $version) { throw "$proj has version '$v', nebo.cpp has $version" }
+}
 
 $release = Join-Path $repo 'release'
 $server = Join-Path $release "NEBO-Server-$version"

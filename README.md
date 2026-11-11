@@ -170,6 +170,43 @@ Controller actions on the server are a short, checked, rate-limited and logged l
 in a cockpit. Also set `allow_object_export = false` and `allow_sensor_export = false` in DCS's
 own server settings; NEBO does not need them.
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by
+[SignPath Foundation](https://signpath.org/).
+
+The signed files (the setup, `Nebo.Client.exe`, `nebo.dll` and the Stream Deck plugin) are built
+from this repository by the [release workflow](.github/workflows/release.yml) on GitHub's own
+runners. Every release is approved by hand before it is signed. The terrain height grids
+(`NEBO-Terrain-<version>.zip`) are DCS data and are never signed.
+
+| Role | Members |
+|------|---------|
+| Committers and reviewers | [Bullat951](https://github.com/Bullat951) |
+| Approvers | [Bullat951](https://github.com/Bullat951) |
+
+Changes from anyone outside the team come in as pull requests and are reviewed by a committer
+before they are merged. Team members use multi-factor authentication on GitHub and SignPath.
+
+## Privacy
+
+NEBO has no telemetry and no accounts of its own. It connects only where you point it, plus the
+few services listed here:
+
+- **The client** connects to the NEBO servers you add, to SRS on your own PC, and to the Stream
+  Deck plugin on your own PC. Once a day it asks GitHub for the latest NEBO release (turn off in
+  *Settings → General → Updates*); a download happens only when you click it. The Satellite base
+  map loads its tiles from Esri while you have it open.
+- **The server hook** talks only to the NEBO clients that log in, and to Discord only when the
+  server's admin turns on the Discord role check. Analytics and the website export are files on
+  the server; nothing is sent anywhere.
+- **The pilot hook** connects only to the NEBO servers listed in it.
+
+Those services have their own privacy policies:
+[GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement),
+[Esri](https://www.esri.com/en-us/privacy/overview),
+[Discord](https://discord.com/privacy).
+
 ## License
 
 NEBO ATC/GCI by Kestrel's Nest Community, © 2026 Bullat951, is free software under the

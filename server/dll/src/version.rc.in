@@ -1,0 +1,28 @@
+// Version resource for nebo.dll; CMakeLists.txt fills in the version from kVersion.
+#include <winver.h>
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION @NEBO_VERSION_COMMAS@
+PRODUCTVERSION @NEBO_VERSION_COMMAS@
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_DLL
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "Kestrel's Nest Community"
+            VALUE "FileDescription", "NEBO ATC/GCI server module for DCS World"
+            VALUE "FileVersion", "@NEBO_VERSION@"
+            VALUE "InternalName", "nebo"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Bullat951, GPL-3.0-only"
+            VALUE "OriginalFilename", "nebo.dll"
+            VALUE "ProductName", "NEBO ATC/GCI"
+            VALUE "ProductVersion", "@NEBO_VERSION@"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END
