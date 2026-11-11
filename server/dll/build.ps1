@@ -1,5 +1,6 @@
-# Builds server\dll\build\Release\nebo.dll with Visual Studio 2022's MSVC (any edition, or the
-# Build Tools) and CMake: the one on PATH, else the one bundled with Visual Studio.
+# Builds server\dll\build\Release\nebo.dll with Visual Studio's MSVC (2022 or newer, any edition,
+# or the Build Tools) and CMake: the one on PATH, else the one bundled with Visual Studio.
+# CMake picks the newest Visual Studio installed; an existing build folder keeps the one it has.
 param([string]$Config = 'Release')
 $ErrorActionPreference = 'Stop'
 
@@ -12,7 +13,7 @@ if (-not (Test-Path $cmake)) { throw 'CMake not found: install Visual Studio 202
 $src   = $PSScriptRoot
 $build = Join-Path $src 'build'
 
-& $cmake -S $src -B $build -G 'Visual Studio 17 2022' -A x64 | Out-Null
+& $cmake -S $src -B $build -A x64 | Out-Null
 if ($LASTEXITCODE) { throw 'cmake configure failed' }
 & $cmake --build $build --config $Config -- /nologo /v:minimal
 if ($LASTEXITCODE) { throw 'cmake build failed' }
