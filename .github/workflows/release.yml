@@ -1,0 +1,64 @@
+# Builds every release file on GitHub's own Windows runners, from this repository only:
+# nebo.dll, Nebo.Client.exe, the Stream Deck plugin, the four zips and NEBO-Setup-<version>.exe.
+# Code signing (SignPath Foundation) needs exactly this: binaries built by a workflow on
+# GitHub-hosted runners, so anyone can trace a signed file back to its source.
+# The terrain grids (DCS data) are not in the repository and are never part of this build:
+# they are packed locally by server\package.ps1 and attached to the release by hand.
+name: Release build
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    env:
+      DOTNET_NOLOGO: '1'
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Tools (Pillow for the Stream Deck keys, Inno Setup 6 for the setup)
+        shell: powershell
+        run: |
+          python -m pip install --disable-pip-version-check --quiet pillow
+          choco install innosetup --yes --no-progress
+          if ($LASTEXITCODE) { throw 'Inno Setup install failed' }
+
+      - name: Build (client, DLL, tests)
+        shell: powershell
+        run: .\build.ps1
+
+      - name: Package (zips and setup)
+        shell: powershell
+        run: .\server\package.ps1 -TerrainFrom "$env:RUNNER_TEMP\no-terrain"
+
+      - name: Checksums
+        shell: powershell
+        run: |
+          Get-ChildItem release -File | Where-Object { $_.Name -match '^NEBO-.*\.(exe|zip)$' } |
+            Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } |
+            Tee-Object release\SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nebo-release
+          if-no-files-found: error
+          path: |
+            release/NEBO-Setup-*.exe
+            release/NEBO-*.zip
+            release/SHA256SUMS.txt

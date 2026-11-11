@@ -107,8 +107,9 @@ GOOD TO KNOW
 - Controllers don't fly: a login from the address of a player in a cockpit is refused.
 - Enemy ground units show on radar only in missions dated 2012 or later (enemy_ground in
   NEBO.lua); before that controllers find SAMs with pilots' RWR calls.
-- Terrain data for Caucasus, Syria and the Marianas is included; other terrains are sampled once
-  on their first mission (in the background) and kept in the NEBO folder.
+- Each terrain is sampled once on its first mission (in the background, a little each frame) and
+  kept in the NEBO folder. To skip that, unpack NEBO-Terrain-<version>.zip from the release page
+  into the server's Saved Games folder (Caucasus, Syria, Marianas).
 - Controller actions (text to a player, F10 marks) are rate-limited and written to dcs.log.
 - Problems: search dcs.log for "NEBO".
 - Analytics and website export (on by default, switch off in NEBO.lua) are local files in the

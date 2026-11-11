@@ -41,7 +41,7 @@ permissions from that copy, or from any part of it (GNU GPL version 3, section 7
 
 - DCS World, its terrains and data (maps, charts, imagery, airfield data) belong to Eagle
   Dynamics SA and the terrain developers. NEBO reads them from the user's own
-  installation; the server package's terrain height grids are sampled from DCS World.
+  installation; the separate terrain download's height grids are sampled from DCS World.
 - Third-party libraries and data keep their own licenses: see
   [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 - "NEBO" and its logo are the project's name and mark, not licensed for other products.

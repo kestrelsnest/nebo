@@ -1,6 +1,6 @@
 # Builds the release packages into release\:
-#   NEBO-Server-<version>.zip  - copy-into-saved-games\ (Mods, Scripts, Config\NEBO.example.lua,
-#                                      NEBO\terrain_*_500.bin) + INSTALL.txt
+#   NEBO-Server-<version>.zip  - copy-into-saved-games\ (Mods, Scripts, Config\NEBO.example.lua)
+#                                      + INSTALL.txt
 #   NEBO-Client-<version>.zip  - Nebo.Client.exe + CLIENT.txt
 #   NEBO-Pilot-<version>.zip   - pilot\NEBO-DTC.lua (the pilots' DTC hook),
 #                                      pilot\NEBO-Export.lua (F-16 designations) + PILOT.txt
@@ -8,9 +8,13 @@
 #                                      and STREAMDECK.txt (built by streamdeck\build.ps1)
 #   NEBO-Setup-<version>.exe   - one wizard for all four parts (server\setup\NEBO.iss, Inno Setup 6);
 #                                      the zips stay for manual installs
+#   NEBO-Terrain-<version>.zip - terrain height grids (NEBO\terrain_*_500.bin) + TERRAIN.txt, only when
+#                                      -TerrainFrom has any. DCS data, not NEBO's own work: never in
+#                                      the setup or the server zip, and never signed
 # The client is the one build.ps1 last built (repo root); run build.ps1 first after client changes.
 # Terrain grids come from the test server's NEBO folder (-TerrainFrom): every terrain sampled there at
-# the default 500 m step ships, so a server on that terrain samples nothing.
+# the default 500 m step goes into the terrain zip; a server that unpacks it samples nothing.
+# GitHub's release build (.github/workflows/release.yml) has none and makes no terrain zip.
 param([string]$TerrainFrom = (Join-Path $env:USERPROFILE 'Saved Games\DCS.server\NEBO'))
 $ErrorActionPreference = 'Stop'
 
@@ -34,12 +38,6 @@ Copy-Item (Join-Path $PSScriptRoot 'lua\NEBO-hook.lua') (Join-Path $paste 'Scrip
 Copy-Item (Join-Path $PSScriptRoot 'config\NEBO.example.lua') (Join-Path $paste 'Config\NEBO.example.lua')
 (Get-Content (Join-Path $PSScriptRoot 'release\INSTALL.txt') -Raw).Replace('__VERSION__', $version) |
     Set-Content (Join-Path $server 'INSTALL.txt') -Encoding utf8 -NoNewline
-$grids = @(Get-ChildItem (Join-Path $TerrainFrom 'terrain_*_500.bin') -ErrorAction SilentlyContinue)
-if ($grids.Count -gt 0) {
-    New-Item -ItemType Directory -Force (Join-Path $paste 'NEBO') | Out-Null
-    $grids | Copy-Item -Destination (Join-Path $paste 'NEBO')
-}
-Write-Host "Terrain grids: $(if ($grids.Count) { ($grids | % { $_.Name }) -join ', ' } else { 'none' })"
 
 $client = Join-Path $release "NEBO-Client-$version"
 Remove-Item $client -Recurse -Force -ErrorAction SilentlyContinue
@@ -80,6 +78,19 @@ foreach ($dir in $server, $client, $pilot, $deck) {
     Remove-Item $zip -Force -ErrorAction SilentlyContinue
     Compress-Archive -Path (Join-Path $dir '*') -DestinationPath $zip
     Write-Host "$zip ($([math]::Round((Get-Item $zip).Length / 1MB, 1)) MB)"
+}
+
+# Terrain grids: their own zip, outside the setup.
+$grids = @(Get-ChildItem (Join-Path $TerrainFrom 'terrain_*_500.bin') -ErrorAction SilentlyContinue)
+Write-Host "Terrain grids: $(if ($grids.Count) { ($grids | % { $_.Name }) -join ', ' } else { 'none' })"
+$terrain = Join-Path $release "NEBO-Terrain-$version"
+Remove-Item $terrain, "$terrain.zip" -Recurse -Force -ErrorAction SilentlyContinue
+if ($grids.Count -gt 0) {
+    New-Item -ItemType Directory -Force (Join-Path $terrain 'copy-into-saved-games\NEBO') | Out-Null
+    $grids | Copy-Item -Destination (Join-Path $terrain 'copy-into-saved-games\NEBO')
+    Copy-Item (Join-Path $PSScriptRoot 'release\TERRAIN.txt'), (Join-Path $repo 'THIRD-PARTY-NOTICES.md') $terrain
+    Compress-Archive -Path (Join-Path $terrain '*') -DestinationPath "$terrain.zip"
+    Write-Host "$terrain.zip ($([math]::Round((Get-Item "$terrain.zip").Length / 1MB, 1)) MB)"
 }
 
 # The setup wizard, made from the four package folders above.

@@ -38,9 +38,10 @@ How to build NEBO, install a build on a DCS server, and check the client. Wire f
 A running client is closed (it saves its layout), rebuilt and started again.
 
 Release packages: `server\package.ps1` → `release\NEBO-Server-<version>.zip` (copy-only
-install; the hook makes `Config\NEBO.lua` with random passwords on the first start; the 500 m
-terrain grids sampled on a server are included), `NEBO-Client-`, `NEBO-Pilot-` and
-`NEBO-StreamDeck-<version>.zip`, then `NEBO-Setup-<version>.exe` from those packages
+install; the hook makes `Config\NEBO.lua` with random passwords on the first start),
+`NEBO-Client-`, `NEBO-Pilot-` and
+`NEBO-StreamDeck-<version>.zip`, `NEBO-Terrain-<version>.zip` (the 500 m terrain grids sampled
+on a server: DCS data, kept out of the setup and never signed), then `NEBO-Setup-<version>.exe` from those packages
 (`ISCC.exe /DVersion=<version> /DSrc=<release folder> server\setup\NEBO.iss`; run ISCC from
 PowerShell or cmd, Git Bash mangles its `/D` switches). The version is `kVersion` in
 `server/dll/src/nebo.cpp`; the client's `<Version>` must match. The client's new-version bar

@@ -1,0 +1,13 @@
+NEBO ATC/GCI - terrain height grids
+
+Optional. A NEBO server samples each terrain once on its first mission (in the background, a
+little each frame) and keeps the result in Saved Games\<server>\NEBO. These files are that
+result for Caucasus, Syria and the Marianas at the default 500 m step (terrain_step in
+NEBO.lua), so a server on those terrains starts with its terrain ready.
+
+Install: copy the contents of copy-into-saved-games into the server's Saved Games folder
+(for example Saved Games\DCS.server), so the files land in its NEBO folder.
+
+The grids are sampled from DCS World. DCS World, its terrains and their data belong to Eagle
+Dynamics SA and the terrain developers. They are not part of NEBO's GPL source and are not
+code-signed.

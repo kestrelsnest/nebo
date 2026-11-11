@@ -26,8 +26,8 @@ ships; Lua is MIT-licensed.
 - **DCS World data**: the DCS Map, DCS Charts and DCS Satellite base maps and airfield details
   are read from the user's own DCS World installation at run time; so are the data cartridge
   tables (each aircraft's DTC defaults and definitions, made by DCS's own DTC code on the
-  user's PC) and the unit types the server sends. The server package includes
-  terrain height grids sampled from DCS World. DCS World, its terrains and their data belong to
+  user's PC) and the unit types the server sends. The separate terrain
+  download (`NEBO-Terrain-<version>.zip`) holds terrain height grids sampled from DCS World. DCS World, its terrains and their data belong to
   Eagle Dynamics SA and the terrain developers.
 
 ## Trademarks
