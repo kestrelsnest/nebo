@@ -15,7 +15,7 @@ How to build NEBO, install a build on a DCS server, and check the client. Wire f
 | `streamdeck/` | Stream Deck plugin (`Nebo.StreamDeck`), its manifest, icons and build |
 | `tools/` | `DtcDefs` (DTC definitions embedded in Core), `DiagramIndexer` (airport-diagram pictures), `MapCapture` (captured satellite maps) |
 | `style/` | `map-style.json`: colours, widths and fonts of the maps |
-| `branding/` | logos, the app icon, `make-icons.js` (icons and wizard images) and `make-options.js` (the setup's option pictures) |
+| `branding/` | logos, the app icon, `make-icons.js` (icons and wizard images) and `make-options.js` (the setup's option pictures), `make-banner.js` (README banner and dividers, and `social-preview.png` for the repo's Settings → Social preview) |
 | `docs/` | manual, radio calls, protocol, design notes, file formats |
 
 ## Requirements

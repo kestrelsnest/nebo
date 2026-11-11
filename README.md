@@ -1,8 +1,7 @@
-# NEBO ATC/GCI
-*by [Kestrel's Nest Community](https://kestrelsnest.co.ua/)*
+<p align="center"><img src="docs/images/banner.png" alt="NEBO ATC/GCI by Kestrel's Nest Community"></p>
 
 **A GCI and ATC controller station for DCS World multiplayer servers. Free and open source.**
-<sub>"Nebo" is "sky" in Ukrainian. Formerly known as Overseer and Eagle's Nest.</sub>
+<sub>By [Kestrel's Nest Community](https://kestrelsnest.co.ua/). "Nebo" is "sky" in Ukrainian. Formerly known as Overseer and Eagle's Nest.</sub>
 
 Your controllers sit at their own PC and see what your coalition's radars see — no more. They
 call BRAA and bullseye, run intercepts, identify contacts, work the tower and the carrier and
@@ -16,7 +15,7 @@ talk on SRS, all from one screen.
 <a href="https://discord.gg/FZGRqwc2Eg"><b>Discord</b></a>
 </p>
 
----
+<p align="center"><img src="docs/images/divider.png" alt="" width="100%"></p>
 
 ## Why NEBO
 
@@ -33,7 +32,7 @@ talk on SRS, all from one screen.
   time per second, spread so that no frame carries more than one NEBO job; while nobody is
   controlling, the picture slows to one every 5 s.
 
----
+<p align="center"><img src="docs/images/divider.png" alt="" width="100%"></p>
 
 ## Get started
 
@@ -71,7 +70,7 @@ come with the setup's **Pilot hook** (it asks for your NEBO servers' addresses):
   (waypoints, threats, radios, countermeasures) for the F/A-18C, F-16C or F-14B(U).
 - **Share your targeting pod:** F-16C and F/A-18C pilots can send their TGP / ATFLIR point.
 
----
+<p align="center"><img src="docs/images/divider.png" alt="" width="100%"></p>
 
 ## What you get
 
@@ -129,7 +128,7 @@ whole package. Each pilot gets the cartridge of the jet they fly.
 | ![Map styles](docs/images/maps.png) | ![Stream Deck](docs/images/streamdeck.png) |
 | DCS Map, Charts and Satellite from your install | The Stream Deck XL page |
 
----
+<p align="center"><img src="docs/images/divider.png" alt="" width="100%"></p>
 
 ## Home servers
 
@@ -139,7 +138,7 @@ NEBO is built and run on the **Kestrel's Nest** servers — come and see it live
 **Running NEBO on your server?** [Tell us](https://github.com/kestrelsnest/nebo/issues)
 and you can be listed here.
 
----
+<p align="center"><img src="docs/images/divider.png" alt="" width="100%"></p>
 
 ## Support the project
 
@@ -149,7 +148,7 @@ Bug reports and ideas are welcome: [open an issue](https://github.com/kestrelsne
 or talk to us on [Discord](https://discord.gg/FZGRqwc2Eg). Building from source and the code's
 layout: [DEVELOPMENT.md](docs/DEVELOPMENT.md); contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
 
----
+<p align="center"><img src="docs/images/divider.png" alt="" width="100%"></p>
 
 ## Coming from Overseer or Eagle's Nest?
 
@@ -160,7 +159,7 @@ hook (`Scripts\Hooks\DCB-hook.lua`, `Mods\Services\DCB`) and the old pilot hooks
 pilots' server lists. Installing by hand: `INSTALL.txt`, `PILOT.txt` and `STREAMDECK.txt` in
 the packages say what to replace; old pilot hooks keep working meanwhile.
 
----
+<p align="center"><img src="docs/images/divider.png" alt="" width="100%"></p>
 
 ## Security
 
