@@ -4,7 +4,7 @@ NEBO ATC/GCI by Kestrel's Nest Community, formerly Overseer and Eagle's Nest (co
 Newest first. Dates are commit dates. "DLL" is the server module (`nebo.dll`, before 0.16.0
 `dcb.dll`), whose version goes up together with the protocol.
 
-## Unreleased
+## 0.17.1 — 2026-11-12
 **Fixed**
 - Foothold zones never showed when Foothold started after NEBO's first look, for example on a
   server paused until the first player joins, or a mission loading Foothold from disk a few

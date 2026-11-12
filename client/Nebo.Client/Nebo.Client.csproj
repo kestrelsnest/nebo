@@ -23,7 +23,7 @@
     <Product>NEBO ATC/GCI</Product>
     <Company>Kestrel's Nest Community</Company>
     <!-- The NEBO version: same as kVersion in server/dll/src/nebo.cpp (server/package.ps1 checks). -->
-    <Version>0.17.0</Version>
+    <Version>0.17.1</Version>
     <ApplicationIcon>Assets\nebo.ico</ApplicationIcon>
     <!-- SkiaSharp.Views.WPF's OpenGL support depends on OpenTK packaged for .NET Framework only. -->
     <NoWarn>$(NoWarn);NU1701</NoWarn>
