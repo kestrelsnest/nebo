@@ -19,6 +19,12 @@ public:
     bool saveCache() const;
     // {"type":"terrain",...} with base64 int16 heights and uint8 surfaces, row-major.
     std::string toJson() const;
+    // The same grid compressed (docs/PROTOCOL.md "terrain"): heights then surfaces, XPRESS
+    // Huffman (Windows Compression API), base64 in "data", with "hash" naming this exact grid.
+    // Empty when compression failed (clients then get toJson()).
+    std::string toJsonCompressed() const;
+    // 16 hex digits naming this grid (dimensions and contents): clients keep grids by it.
+    std::string hash() const;
 
 private:
     std::string id_, cachePath_;

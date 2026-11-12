@@ -78,6 +78,10 @@ public:
     // Message for every coalition (theatre, terrain). Each authenticated client receives the
     // latest version of each channel once, before its next picture.
     void publishAll(const std::string& channel, std::string json);
+    // The terrain grid (channel "terrain"), sent to each client after its first picture: the
+    // compressed form to clients whose hello said "terrain_z":true, or {"type":"terrain_cached"}
+    // when their "terrain_have" already lists this hash; the plain form to older clients and cameras.
+    void publishTerrain(std::string plainJson, std::string compressedJson, std::string hash);
     // Message for one coalition only on its own channel (e.g. the fast LSO feed): latest version
     // per channel, sent after that coalition's picture so it never holds the picture back.
     void publishSide(Coalition c, const std::string& channel, std::string json);
@@ -180,6 +184,9 @@ private:
         int side = -1;  // -1: every coalition; -2: camera logins only; else only that coalition (sent after the picture)
     };
     std::map<std::string, Channel> channels_;
+    // The compressed terrain and its "terrain_cached" reply (same version as channels_["terrain"]).
+    std::shared_ptr<const std::string> terrainZ_, terrainCached_;
+    std::string terrainHash_;
 
     std::mutex flyingMutex_;
     std::vector<std::string> flying_;

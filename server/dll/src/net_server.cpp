@@ -65,6 +65,8 @@ struct Client {
     bool discordDown = false;           // logged once while Discord fails
     bool cameraLogin = false;           // hello said "camera":true (camera password, no Discord)
     bool camera = false;                // logged in as a camera: both sides, camera channels only
+    bool terrainZ = false;              // hello said "terrain_z":true: compressed terrain
+    std::vector<std::string> terrainHave;  // hello's "terrain_have": grids it keeps (hashes)
     std::vector<int64_t> focus;         // camera_set_focus ids (at most 4)
     int focusHz = 10;
     std::deque<std::chrono::steady_clock::time_point> recentFocus;
@@ -270,15 +272,19 @@ bool extractJsonIntArray(const std::string& json, const char* key, std::vector<i
     return true;
 }
 
-// True when the hello line asks for a camera login ("camera":true).
-bool isCameraHello(const std::string& line) {
-    size_t p = line.find("\"camera\"");
+// True when the line has "key":true.
+bool jsonTrue(const std::string& line, const char* key) {
+    const std::string quoted = std::string("\"") + key + "\"";
+    size_t p = line.find(quoted);
     if (p == std::string::npos) return false;
-    p = line.find_first_not_of(" \t", p + 8);
+    p = line.find_first_not_of(" \t", p + quoted.size());
     if (p == std::string::npos || line[p] != ':') return false;
     p = line.find_first_not_of(" \t", p + 1);
     return p != std::string::npos && line.compare(p, 4, "true") == 0;
 }
+
+// True when the hello line asks for a camera login ("camera":true).
+bool isCameraHello(const std::string& line) { return jsonTrue(line, "camera"); }
 
 bool extractJsonNumber(const std::string& json, const char* key, double& value) {
     size_t p = valueOf(json, key);
@@ -761,6 +767,24 @@ void NetServer::publishAll(const std::string& channel, std::string json) {
     ++ch.version;
 }
 
+void NetServer::publishTerrain(std::string plainJson, std::string compressedJson, std::string hash) {
+    plainJson += '\n';
+    auto plain = std::make_shared<const std::string>(std::move(plainJson));
+    std::shared_ptr<const std::string> z, cached;
+    if (!compressedJson.empty()) {
+        compressedJson += '\n';
+        z = std::make_shared<const std::string>(std::move(compressedJson));
+        cached = std::make_shared<const std::string>("{\"type\":\"terrain_cached\",\"hash\":\"" + hash + "\"}\n");
+    }
+    std::lock_guard lock(pictureMutex_);
+    auto& ch = channels_["terrain"];
+    ch.data = std::move(plain);
+    ++ch.version;
+    terrainZ_ = std::move(z);
+    terrainCached_ = std::move(cached);
+    terrainHash_ = std::move(hash);
+}
+
 void NetServer::publishSide(Coalition c, const std::string& channel, std::string json) {
     json += '\n';
     auto data = std::make_shared<const std::string>(std::move(json));
@@ -801,6 +825,8 @@ void NetServer::run() {
     std::string latest[CoalitionCount];
     uint64_t latestVersion[CoalitionCount] = {};
     std::map<std::string, Channel> channels;
+    std::shared_ptr<const std::string> terrainZ, terrainCached;
+    std::string terrainHash;
     uint64_t nextSerial = 1;
 
     while (!stopRequested_) {
@@ -813,6 +839,9 @@ void NetServer::run() {
                 }
             }
             channels = channels_;  // copies shared pointers only
+            terrainZ = terrainZ_;
+            terrainCached = terrainCached_;
+            terrainHash = terrainHash_;
         }
         std::vector<std::string> flying, cockpits;
         {
@@ -943,7 +972,7 @@ void NetServer::run() {
                 continue;
             }
             for (const auto& [name, ch] : channels) {
-                if (ch.side != -1) continue;  // coalition channels go after the picture, camera ones never
+                if (ch.side != -1 || name == "terrain") continue;  // coalition channels go after the picture, camera ones never
                 auto& sent = cl.sentChannels[name];
                 if (sent != ch.version && ch.data) {
                     cl.out = *ch.data;
@@ -963,6 +992,23 @@ void NetServer::run() {
                         cl.out = *ch.data;
                         sent = ch.version;
                         break;
+                    }
+                }
+            }
+            // The terrain last (megabytes): theatre, airfields, the picture and command results
+            // never wait behind it. A client that keeps this grid gets a one-line reply.
+            if (cl.out.empty()) {
+                auto it = channels.find("terrain");
+                if (it != channels.end() && it->second.data) {
+                    auto& sent = cl.sentChannels["terrain"];
+                    if (sent != it->second.version) {
+                        sent = it->second.version;
+                        if (cl.terrainZ && terrainZ) {
+                            const bool kept = std::find(cl.terrainHave.begin(), cl.terrainHave.end(), terrainHash) != cl.terrainHave.end();
+                            cl.out = kept ? *terrainCached : *terrainZ;
+                        } else {
+                            cl.out = *it->second.data;
+                        }
                     }
                 }
             }
@@ -1082,6 +1128,11 @@ void NetServer::run() {
                     cl.out += failJson("protocol");
                     cl.state = ClientState::Closing;
                 } else if (cl.state == ClientState::Pending) {
+                    cl.terrainZ = jsonTrue(authLine, "terrain_z");
+                    if (cl.terrainZ) {
+                        extractJsonStringArray(authLine, "terrain_have", cl.terrainHave);
+                        if (cl.terrainHave.size() > 16) cl.terrainHave.resize(16);
+                    }
                     cl.nonce = randomHex(16);
                     cl.out += "{\"type\":\"hello\",\"version\":2,\"nonce\":\"" + cl.nonce + "\"" +
                               (discord_.enabled() ? ",\"discord\":\"" + jsonEscape(discord_.clientId) + "\"" : std::string()) + "}\n";

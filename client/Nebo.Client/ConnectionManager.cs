@@ -35,6 +35,8 @@ public sealed class ConnectionManager(PictureStore store, Dispatcher dispatcher)
         Profile = profile;
         var session = _session = new CancellationTokenSource();
         var seen = new HashSet<string>();
+        var terrainCache = new TerrainCache(System.IO.Path.Combine(AppPaths.Cache, "terrain"));
+        login = login with { TerrainHave = terrainCache.Have() };
         SetStatus($"Connecting to {host}:{port}…");
         try
         {
@@ -120,8 +122,18 @@ public sealed class ConnectionManager(PictureStore store, Dispatcher dispatcher)
                         if (_waiting.TryRemove(result.Id, out var waiter)) waiter.TrySetResult(result);
                         break;
                     case TerrainMessage terrain:
-                        var grid = await Task.Run(terrain.Decode, session.Token);  // ~1 MB of base64: off the UI thread
+                        var grid = await Task.Run(() =>  // megabytes: off the UI thread
+                        {
+                            var g = terrain.Decode();
+                            terrainCache.Save(terrain);
+                            return g;
+                        }, session.Token);
                         await dispatcher.InvokeAsync(() => store.SetTerrain(grid));
+                        break;
+                    case TerrainCachedMessage kept:
+                        var keptGrid = await Task.Run(() => terrainCache.Load(kept.Hash)?.Decode(), session.Token);
+                        if (keptGrid is null) AppLog.Write($"terrain {kept.Hash}: not in the cache any more (reconnect to download it)");
+                        else await dispatcher.InvokeAsync(() => store.SetTerrain(keptGrid));
                         break;
                 }
             }
@@ -207,6 +219,8 @@ public sealed class ConnectionManager(PictureStore store, Dispatcher dispatcher)
         Theatre t => $" ({t.Id}; {LocalTerrain(t.Id)})",
         FootholdState f => $" ({f.Zones.Count} zones)",
         AirfieldsMessage a => $" ({a.Airfields.Count} airfields)",
+        TerrainMessage g => g.Enc is null ? $" ({g.Id}, plain)" : $" ({g.Id}, compressed {g.Data?.Length / 1024} KB, {g.Hash})",
+        TerrainCachedMessage k => $" ({k.Hash}, from cache)",
         _ => "",
     };
 

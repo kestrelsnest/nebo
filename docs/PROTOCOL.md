@@ -299,7 +299,9 @@ One line each way per step; any refusal is `{"type":"auth_fail","reason":…}` a
 connection closes. Reasons: `update` (an old client while Discord is on), `protocol` (a step out
 of order), `discord` / `discord_down`, `role` (no controller role), `password`, `flying`,
 `side`, `closed` (no logins set up).
-1. client `{"type":"hello","client":"…","version":2}` → server
+1. client `{"type":"hello","client":"…","version":2,"terrain_z":true,"terrain_have":["<hash>",…]}` → server
+   (`terrain_z` / `terrain_have`, DLL 0.17.3: the client takes the compressed terrain and keeps
+   these grids; see "terrain". Older servers ignore them.)
    `{"type":"hello","version":2,"nonce":"<32 hex>","discord":"<application id>"}` (`discord`
    only when the server uses Discord login).
 2. With Discord: the client asks the Discord app on its PC (local pipe `discord-ipc-N`,
@@ -387,6 +389,18 @@ true − variation. `null` if the server could not sample it (clients then show 
 
 Row i at x = x0 + i·step, column j at z = z0 + j·step. Surfaces: 1 land, 2 shallow water,
 3 water, 4 road, 5 runway.
+
+From DLL 0.17.3:
+- A client whose hello said `"terrain_z":true` gets it compressed (about a tenth of the size):
+  `{"type":"terrain","id","x0","z0","step","nx","nz","enc":"xpress_huff","hash":"<16 hex>","size":<bytes>,"data":<base64>}`.
+  `data` is the heights (int16 LE) followed by the surfaces (uint8), `size` bytes in all,
+  compressed with the Windows Compression API (`COMPRESS_ALGORITHM_XPRESS_HUFF`, buffered mode).
+  `hash` names this exact grid (FNV-1a 64 of its header values and contents).
+- If that hello's `terrain_have` lists the hash, the server sends
+  `{"type":"terrain_cached","hash":"<16 hex>"}` instead, and the client loads the grid it kept.
+  The client keeps its last 8 compressed grids in `%LocalAppData%\NEBO\cache\terrain`.
+- Every client gets the terrain after its first picture (theatre, airfields and the picture never
+  wait behind it). Older clients and cameras still get the plain form.
 
 ## airfields (public)
 `{"type":"airfields","airfields":[{"id","name","category" (0 airdrome, 1 helipad),"x","z","coalition",

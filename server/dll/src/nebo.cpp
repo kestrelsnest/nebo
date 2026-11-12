@@ -12,7 +12,7 @@
 
 namespace {
 
-constexpr char kVersion[] = "0.17.2";  //0.3: controller commands; 0.4: coalition channels (LSO feed); 0.5: analytics ids; 0.6: F10 mark commands; 0.7: carrier lights; 0.8: identify, shared threats, nctr; 0.9: controllers do not fly; 0.10: login 2 (Discord, password proof, side choice); 0.11: no rwr channel; 0.12: pilot sync (dtc_request); 0.13: pushed cartridges (dtc_push); 0.14: one pushed cartridge per player and aircraft type; 0.14.1: AEGIS 4 s scan; 0.14.2: client only; 0.14.3: pilot hook, several servers; 0.15: pilot designations (designation on dtc_request, designations channel); 0.15.1: nebo.clients() (idle picture rate); 0.15.2: hook only (launch marks); 0.16: camera login (camera_password, camera channels, camera_set_focus); 0.17: controllers, flights, claim/handoff, callsign, owner colour, area_set (f10: areas on the pilots' F10 map), message_side, chat channel; 0.17.1: hook only (Foothold found late); 0.17.2: client only (client log)
+constexpr char kVersion[] = "0.17.3";  //0.3: controller commands; 0.4: coalition channels (LSO feed); 0.5: analytics ids; 0.6: F10 mark commands; 0.7: carrier lights; 0.8: identify, shared threats, nctr; 0.9: controllers do not fly; 0.10: login 2 (Discord, password proof, side choice); 0.11: no rwr channel; 0.12: pilot sync (dtc_request); 0.13: pushed cartridges (dtc_push); 0.14: one pushed cartridge per player and aircraft type; 0.14.1: AEGIS 4 s scan; 0.14.2: client only; 0.14.3: pilot hook, several servers; 0.15: pilot designations (designation on dtc_request, designations channel); 0.15.1: nebo.clients() (idle picture rate); 0.15.2: hook only (launch marks); 0.16: camera login (camera_password, camera channels, camera_set_focus); 0.17: controllers, flights, claim/handoff, callsign, owner colour, area_set (f10: areas on the pilots' F10 map), message_side, chat channel; 0.17.1: hook only (Foothold found late); 0.17.2: client only (client log); 0.17.3: compressed terrain (terrain_z, terrain_have, terrain_cached), sent after the picture
 nebo::NetServer g_server;
 nebo::TerrainGrid g_terrain;
 
@@ -115,7 +115,7 @@ int l_terrain_begin(lua_State* L) {
     }
     bool cached = g_terrain.begin(std::string(id, idLen), x0, z0, step, static_cast<int>(nx), static_cast<int>(nz),
                                   std::string(path, pathLen));
-    if (cached) g_server.publishAll("terrain", g_terrain.toJson());
+    if (cached) g_server.publishTerrain(g_terrain.toJson(), g_terrain.toJsonCompressed(), g_terrain.hash());
     lua_pushboolean(L, cached ? 1 : 0);
     return 1;
 }
@@ -137,7 +137,7 @@ int l_terrain_finish(lua_State* L) {
         return 1;
     }
     g_terrain.saveCache();
-    g_server.publishAll("terrain", g_terrain.toJson());
+    g_server.publishTerrain(g_terrain.toJson(), g_terrain.toJsonCompressed(), g_terrain.hash());
     lua_pushboolean(L, 1);
     return 1;
 }

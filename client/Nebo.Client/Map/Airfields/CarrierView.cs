@@ -43,6 +43,9 @@ public sealed class CarrierView : FrameworkElement
     public CarrierView()
     {
         ClipToBounds = true;
+        // Kept as a bitmap: WPF redraws its geometry only when it changes, not on every frame the
+        // window is composed (a GPU map beside it animating at the screen's rate).
+        CacheMode = new BitmapCache { SnapsToDevicePixels = true };
         SizeChanged += (_, _) => InvalidateVisual();
         // A guidance-line chip toggled: redraw now rather than at the next picture.
         Loaded += (_, _) => CarrierCases.Changed += InvalidateVisual;

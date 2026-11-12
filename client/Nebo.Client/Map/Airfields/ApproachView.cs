@@ -59,6 +59,9 @@ public sealed class ApproachView : FrameworkElement
     public ApproachView()
     {
         ClipToBounds = true;
+        // Kept as a bitmap: WPF redraws its geometry only when it changes, not on every frame the
+        // window is composed (a GPU map beside it animating at the screen's rate).
+        CacheMode = new BitmapCache { SnapsToDevicePixels = true };
         Focusable = true;
         SizeChanged += (_, _) => InvalidateVisual();
         DcsAirfieldData.Loaded += () => Dispatcher.BeginInvoke(() => { if (_field is not null) Show(_field); });

@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Nebo.Client.Core;
 using Vec = System.Windows.Vector;
 
@@ -95,9 +97,36 @@ public sealed class AirfieldDiagramView : FrameworkElement
     /// <summary>Where the taxiway letters come from: "DCS signs", "DCS signs + chart", "chart" or "".</summary>
     public string LetterSource { get; private set; } = "";
 
+    // Two layers: the plan (pavement mesh, markings, labels) kept as a bitmap, rasterized only
+    // when the view or the field changes; the traffic on top, redrawn on every picture. Drawing
+    // it all as one cached element re-rasterized the pavement on WPF's render thread (shared by
+    // every window) several times a second: the maps stalled 60-250 ms each time.
+    // Zoom and pan move the drawn plan at once (a transform on its bitmap) and draw it afresh
+    // when the wheel or the drag pauses: every notch or mouse move redrawing the pavement mesh
+    // and placing every label again made the diagram lag behind the mouse.
+    private readonly DrawingVisual _frameLayer = new() { CacheMode = new BitmapCache { SnapsToDevicePixels = true } };
+    private readonly ContainerVisual _planHost = new();
+    private readonly DrawingVisual _planLayer = new() { CacheMode = new BitmapCache { SnapsToDevicePixels = true } };
+    private readonly DrawingVisual _trafficLayer = new();
+    private readonly DispatcherTimer _settle = new() { Interval = TimeSpan.FromMilliseconds(150) };
+    private object? _drawnTerrain, _drawnWeather;
+    private double _drawnScale, _drawnE, _drawnN;
+
+    /// <summary>The plan is drawn this far beyond its frame on each side (a fraction of its
+    /// size), so a pan shows drawing before the plan is drawn afresh.</summary>
+    private const double PlanMargin = 0.35;
+
+    protected override int VisualChildrenCount => 3;
+    protected override Visual GetVisualChild(int index) => index switch { 0 => _frameLayer, 1 => _planHost, _ => _trafficLayer };
+
     public AirfieldDiagramView()
     {
         ClipToBounds = true;
+        _planHost.Children.Add(_planLayer);
+        AddVisualChild(_frameLayer);
+        AddVisualChild(_planHost);
+        AddVisualChild(_trafficLayer);
+        _settle.Tick += (_, _) => { _settle.Stop(); InvalidateVisual(); };
         Focusable = true;
         Taxiways.Loaded += () => Dispatcher.BeginInvoke(() => { if (_field is not null) { Show(_field); } });
         DcsAirfieldData.Loaded += () => Dispatcher.BeginInvoke(() => { if (_field is not null) { Show(_field); } });
@@ -464,39 +493,101 @@ public sealed class AirfieldDiagramView : FrameworkElement
 
     // ---- Rendering -----------------------------------------------------------------------------
 
-    protected override void OnRender(DrawingContext dc)
+    protected override void OnRender(DrawingContext _)
     {
+        var took = Stopwatch.StartNew();
+        _settle.Stop();
+        _drawnTerrain = AppState.Store.Terrain;
+        _drawnWeather = AppState.Store.Weather;
+        (_drawnScale, _drawnE, _drawnN) = (_scale, _centerE, _centerN);
+        _planLayer.Transform = null;
+        _planHost.Clip = new RectangleGeometry(Plan);
+        using (var frame = _frameLayer.RenderOpen())
+        using (var plan = _planLayer.RenderOpen())
+        {
+            try
+            {
+                Render(frame, plan);
+            }
+            catch (Exception ex)
+            {
+                // A drawing fault must never take the app down: log it, show a note.
+                Map.Gpu.MapSurface.Log($"airfield diagram: {ex}");
+                frame.DrawRectangle(Desk, null, Box(0, 0, ActualWidth, ActualHeight));
+            }
+        }
+        RenderTraffic();
+        if (took.ElapsedMilliseconds > 40 && !Sheet)
+            Map.Gpu.MapSurface.Log($"airfield diagram: drawn in {took.ElapsedMilliseconds} ms (UI thread), {DebugState}");
+    }
+
+    /// <summary>The view zoomed or panned: moves the drawn plan to it now, draws it afresh once
+    /// the wheel or the drag pauses.</summary>
+    private void ViewMoved()
+    {
+        if (_drawnScale <= 0)
+        {
+            InvalidateVisual();
+            return;
+        }
+        var plan = Plan;
+        double cx = plan.Left + plan.Width / 2, cy = plan.Top + plan.Height / 2, k = _scale / _drawnScale;
+        _planLayer.Transform = new MatrixTransform(k, 0, 0, k,
+            cx * (1 - k) + (_drawnE - _centerE) * _scale, cy * (1 - k) - (_drawnN - _centerN) * _scale);
+        RenderTraffic();
+        _settle.Stop();
+        _settle.Start();
+    }
+
+    /// <summary>The picture changed: redraws the traffic only (and the plan when the terrain or
+    /// the weather it shows changed).</summary>
+    public void StoreChanged()
+    {
+        if (!ReferenceEquals(_drawnTerrain, AppState.Store.Terrain) || !ReferenceEquals(_drawnWeather, AppState.Store.Weather)) InvalidateVisual();
+        else RenderTraffic();
+    }
+
+    private void RenderTraffic()
+    {
+        using var dc = _trafficLayer.RenderOpen();
+        if (TooSmall || _field is null || _frame is null || _theatre is null) return;
         try
         {
-            Render(dc);
+            var plan = Plan;
+            if (!Sheet)
+            {
+                dc.PushClip(new RectangleGeometry(plan));
+                DrawTraffic(dc, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+                dc.Pop();
+            }
+            dc.DrawRectangle(null, new Pen(Ink, 1.2), plan);
         }
         catch (Exception ex)
         {
-            // A drawing fault must never take the app down: log it, show a note.
-            Map.Gpu.MapSurface.Log($"airfield diagram: {ex}");
-            dc.DrawRectangle(Desk, null, Box(0, 0, ActualWidth, ActualHeight));
+            Map.Gpu.MapSurface.Log($"airfield diagram traffic: {ex}");
         }
     }
 
-    private void Render(DrawingContext dc)
+    private void Render(DrawingContext frame, DrawingContext dc)
     {
-        dc.DrawRectangle(Sheet ? Paper : Desk, null, Box(0, 0, ActualWidth, ActualHeight));
+        frame.DrawRectangle(Sheet ? Paper : Desk, null, Box(0, 0, ActualWidth, ActualHeight));
         if (TooSmall)
         {
-            DrawCentered(dc, "Enlarge the pane to see the diagram", new Point(ActualWidth / 2, ActualHeight / 2), Muted, 12, false);
+            DrawCentered(frame, "Enlarge the pane to see the diagram", new Point(ActualWidth / 2, ActualHeight / 2), Muted, 12, false);
             return;
         }
         var page = Page;
-        dc.DrawRectangle(Paper, new Pen(Muted, 0.6), page);
+        frame.DrawRectangle(Paper, new Pen(Muted, 0.6), page);
         if (_field is not { } field || _frame is null || _theatre is not { } theatre)
         {
-            DrawCentered(dc, "Select an airfield", new Point(ActualWidth / 2, ActualHeight / 2), Muted, 14, true);
+            DrawCentered(frame, "Select an airfield", new Point(ActualWidth / 2, ActualHeight / 2), Muted, 14, true);
             return;
         }
         var dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
 
         var plan = Plan;
-        dc.PushClip(new RectangleGeometry(plan));
+        // The margin: drawing ready around the frame for a pan (the host clips it to the frame).
+        dc.PushClip(new RectangleGeometry(Rect.Inflate(plan, plan.Width * PlanMargin, plan.Height * PlanMargin)));
         var toScreen = new MatrixTransform(_scale, 0, 0, _scale, plan.Left + plan.Width / 2 - _centerE * _scale, plan.Top + plan.Height / 2 + _centerN * _scale);
         dc.PushTransform(toScreen);
         // Pavement with an inked edge: everything first in the edge tone a little wider (each mesh
@@ -530,19 +621,17 @@ public sealed class AirfieldDiagramView : FrameworkElement
         DrawTaxiLabels(dc, dpi);
         DrawStands(dc, field, dpi);
         DrawAreas(dc, dpi);
-        if (!Sheet) DrawTraffic(dc, dpi);
         DrawNorthArrow(dc, field, dpi);
         DrawScaleBar(dc, dpi);
         dc.Pop();
-        dc.DrawRectangle(null, new Pen(Ink, 1.2), plan);
 
-        DrawHeader(dc, field, theatre, dpi);
-        DrawInfo(dc, field, theatre, dpi);
-        DrawFooter(dc, theatre, dpi);
+        DrawHeader(frame, field, theatre, dpi);
+        DrawInfo(frame, field, theatre, dpi);
+        DrawFooter(frame, theatre, dpi);
         if (Sheet)
         {
-            DrawRunwayTable(dc, field, theatre, dpi);
-            DrawSheetFrame(dc, field, dpi);
+            DrawRunwayTable(frame, field, theatre, dpi);
+            DrawSheetFrame(frame, field, dpi);
         }
     }
 
@@ -1250,7 +1339,7 @@ public sealed class AirfieldDiagramView : FrameworkElement
         _centerE = pe - (at.X - cx) / _scale;
         _centerN = pn - (cy - at.Y) / _scale;
         ClampView();
-        InvalidateVisual();
+        ViewMoved();
         e.Handled = true;
     }
 
@@ -1276,13 +1365,14 @@ public sealed class AirfieldDiagramView : FrameworkElement
         _dragFrom = at;
         _userView = true;
         ClampView();
-        InvalidateVisual();
+        ViewMoved();
     }
 
     protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
     {
         _dragFrom = null;
         ReleaseMouseCapture();
+        if (_settle.IsEnabled) InvalidateVisual();  // the drag ended: sharp at once
     }
 
     private static Brush Frozen(Color c)

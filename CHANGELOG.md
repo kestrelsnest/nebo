@@ -4,6 +4,29 @@ NEBO ATC/GCI by Kestrel's Nest Community, formerly Overseer and Eagle's Nest (co
 Newest first. Dates are commit dates. "DLL" is the server module (`nebo.dll`, before 0.16.0
 `dcb.dll`), whose version goes up together with the protocol.
 
+## 0.17.3 — 2026-11-12
+**Fixed**
+- New controllers waited up to two minutes for anything to show: the server sent the terrain
+  grid (about 26 MB for Caucasus, 34 MB for Persian Gulf) uncompressed and before the map, the
+  aircraft and command answers. It now goes compressed (about a tenth: Caucasus 26 MB to 2.7 MB)
+  and after the first picture, so the map and aircraft show at once and the terrain fills in.
+- The client keeps the grids it got (`%LocalAppData%\NEBO\cache\terrain`, last 8) and tells the
+  server at login: reconnecting, or a restart of the client, downloads no terrain at all.
+- Needs DLL 0.17.3 on the server and a 0.17.3 client for the compression and the cache; an
+  older client on a 0.17.3 server still gets the terrain after the picture, uncompressed.
+- The ATC tab's airport diagram (and the approach and carrier views) made every map drop to
+  about half its frame rate while shown, with stalls of up to a quarter second: WPF redrew the
+  whole diagram, pavement mesh included, on every frame and on every picture. The airfield is
+  now kept as a picture, redrawn only when you zoom, pan or pick another field, and the traffic
+  is drawn on its own layer above it.
+
+**Controllers**
+- Take-off: the message has **Hand off ▾** back next to **Keep**, and closes by itself after a
+  20-second countdown shown on it, changing nothing (opening Hand off stops the countdown).
+- Controller colours are cool colours only (cyan, teal, mint, purple, lavender, periwinkle,
+  white): no red, orange, yellow or pink, which read as hostile or unknown on the map. A saved
+  colour that is gone falls back to cyan.
+
 ## 0.17.2 — 2026-11-12
 **Client**
 - A **client log**, `%LocalAppData%\NEBO\nebo.log` (the session before: `nebo-previous.log`):

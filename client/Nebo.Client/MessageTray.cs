@@ -27,6 +27,12 @@ public sealed class TrayMessage
     /// <summary>When it goes by itself; null: stays until answered or dismissed. Messages that
     /// are not strong always go after <see cref="MessageTray.InfoLife"/>.</summary>
     public DateTime? Expires { get; internal set; }
+    /// <summary>When <see cref="OnDeadline"/> runs by itself (the card counts down to it with
+    /// <see cref="DeadlineText"/>); null: no countdown. Clearing it stops the countdown.</summary>
+    public DateTime? Deadline { get; set; }
+    /// <summary>The countdown line, given the seconds left ("Keeping him in {0} s").</summary>
+    public string DeadlineText { get; init; } = "{0} s";
+    public Func<Task>? OnDeadline { get; init; }
 }
 
 /// <summary>The messages every map's tray shows (controllers on and off station, new pilots,
@@ -73,11 +79,19 @@ public static class MessageTray
         Changed?.Invoke();
     }
 
-    /// <summary>Drops expired and obsolete messages (once a second and when the flights change).</summary>
+    /// <summary>Drops expired and obsolete messages and runs the default of those whose
+    /// deadline passed (once a second and when the flights change).</summary>
     public static void Prune()
     {
         var now = DateTime.Now;
-        if (Items.RemoveAll(m => m.Expires < now || m.Obsolete?.Invoke() == true) > 0) Changed?.Invoke();
+        var due = Items.Where(m => m.Deadline < now && m.Obsolete?.Invoke() != true).ToList();
+        foreach (var m in due)
+        {
+            m.Deadline = null;
+            Items.Remove(m);
+            if (m.OnDeadline is { } run) _ = run();
+        }
+        if (Items.RemoveAll(m => m.Expires < now || m.Obsolete?.Invoke() == true) > 0 || due.Count > 0) Changed?.Invoke();
     }
 
     private static DispatcherTimer StartTimer()
@@ -152,6 +166,21 @@ public sealed class MessageTrayView : StackPanel
         body.Children.Add(head);
         if (m.Detail is { Length: > 0 } detail)
             body.Children.Add(new TextBlock { Text = detail, Foreground = dim, FontSize = 11, TextWrapping = TextWrapping.Wrap });
+        if (m.Deadline is not null)
+        {
+            // The countdown, ticking on its own while the card is shown.
+            var count = new TextBlock { Foreground = accent, FontSize = 11, FontWeight = FontWeights.SemiBold };
+            void Show()
+            {
+                if (m.Deadline is not { } at) { count.Visibility = Visibility.Collapsed; return; }
+                count.Text = string.Format(m.DeadlineText, Math.Max(0, (int)Math.Ceiling((at - DateTime.Now).TotalSeconds)));
+            }
+            var tick = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+            tick.Tick += (_, _) => Show();
+            count.Loaded += (_, _) => { Show(); tick.Start(); };
+            count.Unloaded += (_, _) => tick.Stop();
+            body.Children.Add(count);
+        }
         if (m.Actions.Count > 0)
         {
             var row = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };

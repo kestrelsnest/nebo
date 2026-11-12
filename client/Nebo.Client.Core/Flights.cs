@@ -237,7 +237,9 @@ public static class Areas
 /// identity and package colours.</summary>
 public static class OwnerColors
 {
-    public static readonly string[] Choices = ["#FF7A1A", "#FFD84A", "#A57CFF", "#FF7AA8", "#1FB89A", "#7EC8FF", "#7CFFB2", "#F0F0F0"];
+    // Cool colours only: nothing that reads as hostile or unknown (red, orange, yellow, pink),
+    // and not the map's friendly blue, which would look like nobody has the pilot.
+    public static readonly string[] Choices = ["#22E0FF", "#1FB89A", "#7CFFB2", "#A57CFF", "#D0A8FF", "#B8C8FF", "#F0F0F0"];
 
     public static (byte R, byte G, byte B)? Parse(string? hex) =>
         hex is { Length: 7 } && hex[0] == '#' && int.TryParse(hex.AsSpan(1), System.Globalization.NumberStyles.HexNumber, null, out var v)

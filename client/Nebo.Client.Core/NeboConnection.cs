@@ -57,7 +57,9 @@ public sealed class NeboConnection : IAsyncDisposable
         try
         {
             var stream = tcp.GetStream();
-            await stream.WriteAsync(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { type = "hello", client = ClientName, version = 2 }) + "\n"), ct);
+            // terrain_z: compressed terrain, terrain_have: grids kept (DLL 0.17.3; older servers ignore both).
+            var helloLine = JsonSerializer.Serialize(new { type = "hello", client = ClientName, version = 2, terrain_z = true, terrain_have = login.TerrainHave ?? [] });
+            await stream.WriteAsync(Encoding.UTF8.GetBytes(helloLine + "\n"), ct);
             var reader = new StreamReader(stream, new UTF8Encoding(false));
             using var hello = await ReadReplyAsync(reader, ct);
             var h = hello.RootElement;
@@ -179,6 +181,7 @@ public sealed class NeboConnection : IAsyncDisposable
                 "picture" => doc.RootElement.Deserialize<Picture>(),
                 "theatre" => doc.RootElement.Deserialize<Theatre>(),
                 "terrain" => doc.RootElement.Deserialize<TerrainMessage>(),
+                "terrain_cached" => doc.RootElement.Deserialize<TerrainCachedMessage>(),
                 "foothold" => doc.RootElement.Deserialize<FootholdState>(),
                 "airfields" => doc.RootElement.Deserialize<AirfieldsMessage>(),
                 "weather" => doc.RootElement.Deserialize<WeatherMessage>(),
@@ -234,4 +237,5 @@ public sealed record LoginOptions(
     Func<IReadOnlyList<string>, string?, Task<string?>> ChooseSide,
     Action<string>? Progress = null,
     string? Callsign = null,
-    string? Color = null);
+    string? Color = null,
+    IReadOnlyList<string>? TerrainHave = null);

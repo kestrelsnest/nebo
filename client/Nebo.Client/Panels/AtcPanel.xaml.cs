@@ -58,7 +58,7 @@ public partial class AtcPanel : UserControl
         {
             AppState.Store.AirfieldsChanged += Refresh;
             AppState.Store.TheatreChanged += Refresh;  // a field remembered from before it came
-            AppState.Store.Changed += Diagram.InvalidateVisual;
+            AppState.Store.Changed += Diagram.StoreChanged;
             AppState.Store.Changed += Approach.InvalidateVisual;
             AppState.Store.Changed += CarrierView.InvalidateVisual;
             AppState.Store.Changed += CarriersMaybeChanged;
@@ -74,7 +74,7 @@ public partial class AtcPanel : UserControl
         {
             AppState.Store.AirfieldsChanged -= Refresh;
             AppState.Store.TheatreChanged -= Refresh;
-            AppState.Store.Changed -= Diagram.InvalidateVisual;
+            AppState.Store.Changed -= Diagram.StoreChanged;
             AppState.Store.Changed -= Approach.InvalidateVisual;
             AppState.Store.Changed -= CarrierView.InvalidateVisual;
             AppState.Store.Changed -= CarriersMaybeChanged;

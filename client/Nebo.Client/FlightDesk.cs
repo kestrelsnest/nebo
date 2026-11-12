@@ -276,16 +276,29 @@ public static class FlightDesk
         Chime.Play(Chime.Rise);
     }
 
+    /// <summary>How long the take-off message waits for Hand off or Keep before it goes.</summary>
+    private static readonly TimeSpan TakeOffChoice = TimeSpan.FromSeconds(20);
+
     private static void OnTookOff(FlightInfo f)
     {
-        MessageTray.Post(new TrayMessage
+        TrayMessage? message = null;
+        message = MessageTray.Post(new TrayMessage
         {
             Title = $"{f.Player} airborne",
             Detail = f.FieldName.Length > 0 ? $"From {f.FieldName}" : null,
             Accent = ColorOf(Board.Controller(Board.MyId)) ?? Color.FromRgb(0x4C, 0xB8, 0x64),
             Strong = true,
             Key = $"air:{f.Unit}",
-            Actions = [new TrayAction("Keep", _ => KeepAsync(f), "Back to your channel; he is told to contact you there")],
+            Actions =
+            [
+                // Choosing stops the countdown: the menu stays open as long as it takes.
+                new TrayAction("Hand off ▾", b => { if (message is not null) message.Deadline = null; HandOffMenu(f, b); return Task.CompletedTask; },
+                    "Offer him to another controller", Closes: false),
+                new TrayAction("Keep", _ => KeepAsync(f), "Back to your channel; he is told to contact you there"),
+            ],
+            Deadline = DateTime.Now + TakeOffChoice,
+            // Nothing chosen in time: the message goes; he stays on your frequency as he is.
+            DeadlineText = "Closes in {0} s",
             Obsolete = () => Board.Flight(f.Unit) is not { } now || !Board.Mine(now) || now.OnGround || Board.HandoffOf(f.Unit) is not null,
         });
         Chime.Play(Chime.Rise);
@@ -361,6 +374,13 @@ public static class FlightDesk
         }
         else
             yield return new MenuItem { Header = $"{f.Player}: with {owner?.Display ?? "another controller"}", IsEnabled = false };
+    }
+
+    private static void HandOffMenu(FlightInfo f, FrameworkElement under)
+    {
+        var menu = new ContextMenu { PlacementTarget = under };
+        foreach (var item in HandOffItems(f)) menu.Items.Add(item);
+        menu.IsOpen = true;
     }
 
     /// <summary>One item per other controller (GCI first); a pilot in one of my packages can go

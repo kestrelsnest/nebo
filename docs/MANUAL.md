@@ -360,16 +360,18 @@ he took off from, ↓ the one he landed at). Right-click a player there or on a 
   one, else the one used longest ago), you transmit on it, and he gets an on-screen text: "NEBO:
   Overlord, Akrotiri Tower, with you on 251.000 AM. Call when ready to taxi." Two controllers
   can't hold the same pilot.
-- **Airborne.** When one of your pilots takes off, a message tells you, with **Keep**: you go
-  back to the channel you used before taking him and he is told to contact you there. Nothing
-  happens by itself.
+- **Airborne.** When one of your pilots takes off, a message asks what next: **Hand off ▾** to
+  another controller, or **Keep**: you go back to the channel you used before taking him and he
+  is told to contact you there. It counts down 20 seconds ("Closes in 14 s") and then goes,
+  changing nothing; opening Hand off stops the countdown while you choose.
 - **Hand off** offers a pilot to another controller; a pilot in one of your packages can go with
   the whole package (its name and frequency go along). The other controller gets a message with
   **Accept** / **Decline**; you see *Offered … waiting* (**Take back** withdraws it). While the
   offer waits, the pilot's symbol blinks white on every controller's map. On accept,
   the pilots get a text to contact the new controller, and a handed-over package fills one of the
   receiver's free packages.
-- **Your colour** (picked in the Connect dialog) is the colour your pilots' symbols and data
+- **Your colour** (picked in the Connect dialog: cyan, teal, mint, purple, lavender, periwinkle or
+  white; never red, orange or yellow, which read as hostile or unknown) is the colour your pilots' symbols and data
   blocks are drawn in on every controller's map (over a package's colour), and draws your area.
 - **Areas of operations**: **Area** at the front of the map's filter row draws one: click its
   corners (3–40); to finish, click the first corner again, double-click the last one, press

@@ -1,5 +1,8 @@
 #include "terrain.h"
 
+#include <windows.h>
+#include <compressapi.h>
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -107,6 +110,48 @@ bool TerrainGrid::saveCache() const {
               fwrite(surfaces_.data(), 1, surfaces_.size(), f) == surfaces_.size();
     fclose(f);
     return ok;
+}
+
+std::string TerrainGrid::hash() const {
+    // FNV-1a 64 over the header values and the grid itself.
+    uint64_t h = 1469598103934665603ull;
+    auto mix = [&h](const void* p, size_t n) {
+        auto b = static_cast<const uint8_t*>(p);
+        for (size_t i = 0; i < n; ++i) { h ^= b[i]; h *= 1099511628211ull; }
+    };
+    mix(id_.data(), id_.size());
+    mix(&x0_, sizeof(x0_));
+    mix(&z0_, sizeof(z0_));
+    mix(&step_, sizeof(step_));
+    mix(&nx_, sizeof(nx_));
+    mix(&nz_, sizeof(nz_));
+    mix(heights_.data(), heights_.size() * sizeof(int16_t));
+    mix(surfaces_.data(), surfaces_.size());
+    char out[17];
+    snprintf(out, sizeof(out), "%016llx", static_cast<unsigned long long>(h));
+    return out;
+}
+
+std::string TerrainGrid::toJsonCompressed() const {
+    std::vector<uint8_t> raw(heights_.size() * sizeof(int16_t) + surfaces_.size());
+    std::memcpy(raw.data(), heights_.data(), heights_.size() * sizeof(int16_t));
+    std::memcpy(raw.data() + heights_.size() * sizeof(int16_t), surfaces_.data(), surfaces_.size());
+    COMPRESSOR_HANDLE c = nullptr;
+    if (!CreateCompressor(COMPRESS_ALGORITHM_XPRESS_HUFF, nullptr, &c)) return {};
+    std::vector<uint8_t> packed(raw.size() + 65536);
+    SIZE_T size = 0;
+    const BOOL ok = Compress(c, raw.data(), raw.size(), packed.data(), packed.size(), &size);
+    CloseCompressor(c);
+    if (!ok) return {};
+    char head[512];
+    snprintf(head, sizeof(head),
+             "{\"type\":\"terrain\",\"id\":\"%s\",\"x0\":%.1f,\"z0\":%.1f,\"step\":%.1f,\"nx\":%d,\"nz\":%d,"
+             "\"enc\":\"xpress_huff\",\"hash\":\"%s\",\"size\":%zu,\"data\":\"",
+             jsonEscape(id_).c_str(), x0_, z0_, step_, nx_, nz_, hash().c_str(), raw.size());
+    std::string json = head;
+    json += base64(packed.data(), size);
+    json += "\"}";
+    return json;
 }
 
 std::string TerrainGrid::toJson() const {

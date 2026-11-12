@@ -79,4 +79,50 @@ public class TheatreTests
         Assert.Equal(-1, grid.HeightAt(0, 1));
         Assert.Equal(Surface.Water, grid.SurfaceAt(0, 1));
     }
+
+    /// <summary>A 3x4 grid compressed the way DLL 0.17.3 sends it: heights then surfaces.</summary>
+    private static TerrainMessage Compressed(string hash = "0123456789abcdef")
+    {
+        short[] heights = [0, 10, 20, 30, -5, 5, 15, 25, 100, 200, 300, 400];
+        byte[] surfaces = [1, 1, 3, 3, 1, 4, 5, 1, 2, 2, 1, 1];
+        var raw = new byte[heights.Length * 2 + surfaces.Length];
+        Buffer.BlockCopy(heights, 0, raw, 0, heights.Length * 2);
+        surfaces.CopyTo(raw, heights.Length * 2);
+        return new TerrainMessage("Test", 0, 0, 500, 3, 4, null, null, "xpress_huff", hash, raw.Length, Convert.ToBase64String(Xpress.Compress(raw)));
+    }
+
+    [Fact]
+    public void Compressed_terrain_decodes()
+    {
+        var grid = Compressed().Decode();
+        Assert.Equal(-5, grid.HeightAt(1, 0));
+        Assert.Equal(400, grid.HeightAt(2, 3));
+        Assert.Equal(Surface.Runway, grid.SurfaceAt(1, 2));
+        Assert.Equal(Surface.ShallowWater, grid.SurfaceAt(2, 0));
+    }
+
+    [Fact]
+    public void Unknown_terrain_encoding_is_refused() =>
+        Assert.Throws<InvalidDataException>(() => (Compressed() with { Enc = "zstd" }).Decode());
+
+    [Fact]
+    public void Terrain_cache_keeps_compressed_grids_by_hash()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "nebo-terrain-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var cache = new TerrainCache(dir);
+            Assert.Empty(cache.Have());
+            cache.Save(Compressed());
+            Assert.Equal(["0123456789abcdef"], cache.Have());
+            Assert.Equal(400, cache.Load("0123456789abcdef")!.Decode().HeightAt(2, 3));
+            Assert.Null(cache.Load("fedcba9876543210"));     // not kept
+            Assert.Null(cache.Load("..\\..\\x"));             // not a hash: never a path
+            cache.Save(new TerrainMessage("Plain", 0, 0, 1000, 1, 1, "AAA=", "AQ=="));  // plain: not kept
+            Assert.Single(cache.Have());
+            for (var i = 0; i < TerrainCache.Keep + 2; i++) cache.Save(Compressed($"{i:x16}"));
+            Assert.Equal(TerrainCache.Keep, cache.Have().Count);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
 }

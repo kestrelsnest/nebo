@@ -128,7 +128,9 @@ public sealed record MagVarGrid(
 public enum Surface : byte { Unknown = 0, Land = 1, ShallowWater = 2, Water = 3, Road = 4, Runway = 5 }
 
 /// <summary>Terrain heights and surface types sampled by the server on a regular x/z grid:
-/// row i at x = X0 + i·Step, column j at z = Z0 + j·Step.</summary>
+/// row i at x = X0 + i·Step, column j at z = Z0 + j·Step. Plain (heights, surfaces in base64),
+/// or from DLL 0.17.3 compressed: <see cref="Enc"/> "xpress_huff", heights then surfaces in
+/// <see cref="Data"/>, <see cref="Hash"/> naming the grid (clients keep it by that).</summary>
 public sealed record TerrainMessage(
     [property: JsonPropertyName("id")] string Id,
     [property: JsonPropertyName("x0")] double X0,
@@ -136,19 +138,140 @@ public sealed record TerrainMessage(
     [property: JsonPropertyName("step")] double Step,
     [property: JsonPropertyName("nx")] int Nx,
     [property: JsonPropertyName("nz")] int Nz,
-    [property: JsonPropertyName("heights")] string HeightsBase64,
-    [property: JsonPropertyName("surfaces")] string SurfacesBase64)
+    [property: JsonPropertyName("heights")] string? HeightsBase64,
+    [property: JsonPropertyName("surfaces")] string? SurfacesBase64,
+    [property: JsonPropertyName("enc")] string? Enc = null,
+    [property: JsonPropertyName("hash")] string? Hash = null,
+    [property: JsonPropertyName("size")] long Size = 0,
+    [property: JsonPropertyName("data")] string? Data = null)
 {
     public TerrainGrid Decode()
     {
-        var h = Convert.FromBase64String(HeightsBase64);
-        var s = Convert.FromBase64String(SurfacesBase64);
         var n = Nx * Nz;
+        byte[] h, s;
+        if (Enc is not null)
+        {
+            if (Enc != "xpress_huff" || Data is null) throw new InvalidDataException($"terrain encoding '{Enc}' unknown");
+            var raw = Xpress.Decompress(Convert.FromBase64String(Data), (long)n * 3);
+            h = raw[..(n * 2)];
+            s = raw[(n * 2)..];
+        }
+        else
+        {
+            h = Convert.FromBase64String(HeightsBase64 ?? "");
+            s = Convert.FromBase64String(SurfacesBase64 ?? "");
+        }
         if (h.Length != n * 2 || s.Length != n) throw new InvalidDataException("terrain size mismatch");
         var heights = new short[n];
         Buffer.BlockCopy(h, 0, heights, 0, h.Length);
         return new TerrainGrid(Id, X0, Z0, Step, Nx, Nz, heights, s);
     }
+}
+
+/// <summary>The server's answer when this client already keeps the grid (its hello listed the
+/// hash): load it from <see cref="TerrainCache"/>.</summary>
+public sealed record TerrainCachedMessage([property: JsonPropertyName("hash")] string Hash);
+
+/// <summary>The terrain grids this client got compressed, one file per hash, so a reconnect
+/// downloads nothing (the hello lists them; the server answers "terrain_cached"). Keeps the
+/// newest <see cref="Keep"/>.</summary>
+public sealed class TerrainCache(string folder)
+{
+    public const int Keep = 8;
+
+    private string PathOf(string hash) => System.IO.Path.Combine(folder, $"terrain_{hash}.json");
+
+    private static bool IsHash(string hash) => hash.Length == 16 && hash.All(Uri.IsHexDigit);
+
+    /// <summary>Hashes of the grids kept, newest first.</summary>
+    public IReadOnlyList<string> Have()
+    {
+        try
+        {
+            if (!Directory.Exists(folder)) return [];
+            return new DirectoryInfo(folder).GetFiles("terrain_*.json").OrderByDescending(f => f.LastWriteTimeUtc)
+                .Select(f => f.Name["terrain_".Length..^".json".Length]).Where(IsHash).Take(Keep).ToList();
+        }
+        catch (IOException) { return []; }
+        catch (UnauthorizedAccessException) { return []; }
+    }
+
+    /// <summary>Keeps a compressed grid (other forms are not kept) and drops the oldest beyond <see cref="Keep"/>.</summary>
+    public void Save(TerrainMessage m)
+    {
+        if (m.Enc is null || m.Hash is null || !IsHash(m.Hash)) return;
+        try
+        {
+            Directory.CreateDirectory(folder);
+            var path = PathOf(m.Hash);
+            File.WriteAllText(path + ".tmp", JsonSerializer.Serialize(m));
+            File.Move(path + ".tmp", path, overwrite: true);
+            foreach (var old in new DirectoryInfo(folder).GetFiles("terrain_*.json").OrderByDescending(f => f.LastWriteTimeUtc).Skip(Keep))
+                old.Delete();
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
+
+    /// <summary>The kept grid with this hash, or null (gone, unreadable).</summary>
+    public TerrainMessage? Load(string hash)
+    {
+        if (!IsHash(hash)) return null;
+        try
+        {
+            var path = PathOf(hash);
+            if (!File.Exists(path)) return null;
+            File.SetLastWriteTimeUtc(path, DateTime.UtcNow);  // used: newest
+            return JsonSerializer.Deserialize<TerrainMessage>(File.ReadAllText(path));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { return null; }
+    }
+}
+
+/// <summary>XPRESS Huffman, the Windows Compression API's buffered format (cabinet.dll), which
+/// the server DLL writes.</summary>
+public static class Xpress
+{
+    private const uint XpressHuff = 4;
+
+    public static byte[] Decompress(byte[] packed, long maxSize)
+    {
+        if (!CreateDecompressor(XpressHuff, IntPtr.Zero, out var d)) throw new InvalidDataException("no decompressor");
+        try
+        {
+            var outBuf = new byte[maxSize];
+            if (!Decompress(d, packed, (nuint)packed.Length, outBuf, (nuint)outBuf.Length, out var size))
+                throw new InvalidDataException($"terrain data damaged (error {System.Runtime.InteropServices.Marshal.GetLastWin32Error()})");
+            return size == (nuint)outBuf.Length ? outBuf : outBuf[..(int)size];
+        }
+        finally { CloseDecompressor(d); }
+    }
+
+    /// <summary>For tests: the same format the server writes.</summary>
+    public static byte[] Compress(byte[] raw)
+    {
+        if (!CreateCompressor(XpressHuff, IntPtr.Zero, out var c)) throw new InvalidOperationException("no compressor");
+        try
+        {
+            var outBuf = new byte[raw.Length + 65536];
+            if (!Compress(c, raw, (nuint)raw.Length, outBuf, (nuint)outBuf.Length, out var size)) throw new InvalidOperationException("compress failed");
+            return outBuf[..(int)size];
+        }
+        finally { CloseCompressor(c); }
+    }
+
+    [System.Runtime.InteropServices.DllImport("cabinet.dll", SetLastError = true)]
+    private static extern bool CreateDecompressor(uint algorithm, IntPtr routines, out IntPtr handle);
+    [System.Runtime.InteropServices.DllImport("cabinet.dll", SetLastError = true)]
+    private static extern bool Decompress(IntPtr handle, byte[] data, nuint dataSize, byte[] buffer, nuint bufferSize, out nuint size);
+    [System.Runtime.InteropServices.DllImport("cabinet.dll")]
+    private static extern bool CloseDecompressor(IntPtr handle);
+    [System.Runtime.InteropServices.DllImport("cabinet.dll", SetLastError = true)]
+    private static extern bool CreateCompressor(uint algorithm, IntPtr routines, out IntPtr handle);
+    [System.Runtime.InteropServices.DllImport("cabinet.dll", SetLastError = true)]
+    private static extern bool Compress(IntPtr handle, byte[] data, nuint dataSize, byte[] buffer, nuint bufferSize, out nuint size);
+    [System.Runtime.InteropServices.DllImport("cabinet.dll")]
+    private static extern bool CloseCompressor(IntPtr handle);
 }
 
 public sealed record TerrainGrid(string Id, double X0, double Z0, double Step, int Nx, int Nz, short[] Heights, byte[] Surfaces)
