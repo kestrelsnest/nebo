@@ -521,8 +521,13 @@ local function footholdTick()
     net.dostring_in("mission", 'a_do_script("if NEBO_footholdPush then NEBO_footholdPush() end")')
     local json = net.dostring_in("server", "local j = NEBO_footholdJson; NEBO_footholdJson = nil; return j or ''")
     if json == "none" then
-        fh.absent = true
-        neboLog("no Foothold in this mission")
+        -- Foothold may build its zones a while after the mission starts: keep looking every 30 s
+        -- (cheap) until it is there, and say so once.
+        fh.next = now + 30
+        if not fh.saidNone then
+            fh.saidNone = true
+            neboLog("no Foothold yet in this mission; checking every 30 s")
+        end
     elseif type(json) == "string" and json:sub(1, 4) == "ERR:" then
         reportError("foothold export failed: " .. json:sub(5))
     elseif type(json) == "string" and json:sub(1, 1) == "{" and json ~= fh.last then
