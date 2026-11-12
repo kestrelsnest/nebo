@@ -19,6 +19,7 @@ public sealed class WorkspaceView : ContentControl
     public const string AtcId = "atc";
     public const string PackagesId = "packages";
     public const string EngagementsId = "engagements";
+    public const string ChatId = "chat";
     public const string DtcId = "dtc";
     private const string MapPrefix = "map:";
 
@@ -114,6 +115,7 @@ public sealed class WorkspaceView : ContentControl
         AtcId => new AtcPanel(),
         PackagesId => new PackagesPanel(),
         EngagementsId => new EngagementsPanel(),
+        ChatId => new ChatPanel(),
         DtcId => new DtcPanel(),
         AtcViewPanel.Diagram or AtcViewPanel.Approach or AtcViewPanel.Carrier or AtcViewPanel.Lso => new AtcViewPanel(contentId),
         not null when contentId.StartsWith(MapPrefix) => new MapPanel(contentId) { WorkspacePreset = Preset },
@@ -162,6 +164,7 @@ public sealed class WorkspaceView : ContentControl
             var atc = new LayoutAnchorablePane(Anchorable(AtcId, "ATC")) { DockHeight = new GridLength(3, GridUnitType.Star) };
             var srs = new LayoutAnchorablePane(Anchorable(SrsId, "SRS")) { DockHeight = new GridLength(1, GridUnitType.Star) };
             srs.Children.Add(Anchorable(PackagesId, "Packages"));
+            srs.Children.Add(Anchorable(ChatId, "Chat"));
             // A fixed width: AvalonDock lets the document area take all star space.
             var left = new LayoutAnchorablePaneGroup(atc) { Orientation = Orientation.Vertical, DockWidth = new GridLength(700) };
             left.Children.Add(srs);
@@ -178,6 +181,7 @@ public sealed class WorkspaceView : ContentControl
         objects.Children.Add(Anchorable(PackagesId, "Packages"));
         objects.Children.Add(Anchorable(EngagementsId, "Engagements"));
         var tools = new LayoutAnchorablePane(Anchorable(SrsId, "SRS")) { DockHeight = new GridLength(1, GridUnitType.Star) };
+        tools.Children.Add(Anchorable(ChatId, "Chat"));
         var side = new LayoutAnchorablePaneGroup(objects) { Orientation = Orientation.Vertical, DockWidth = new GridLength(420) };
         side.Children.Add(tools);
         Dock.Layout = new LayoutRoot { RootPanel = new LayoutPanel(new LayoutDocumentPaneGroup(documents)) };

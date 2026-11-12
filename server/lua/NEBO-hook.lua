@@ -32,7 +32,12 @@ local NEBO = {
             dtc_test_pilot = "",
             -- NEBO Camera: its own password ("" = off). A camera login sees every unit of both
             -- sides and the missiles (cinematic shots); refused from any address in a cockpit.
-            camera_password = "", camera_interval = 1, camera_focus_hz = 20 },
+            camera_password = "", camera_interval = 1, camera_focus_hz = 20,
+            -- A controller logging in or out is announced on the side's pilots' screens
+            -- ("NEBO: Overlord (GCI) on station, 251.000")
+            announce_controllers = true,
+            -- Players' chat (all chat, side chat) shown to controllers in NEBO's Chat panel
+            relay_chat = true },
     -- collector timing, logged once a minute
     stats = { n = 0, total = 0, max = 0, bytes = 0, nextLog = 0 },
     started = false,
@@ -61,6 +66,12 @@ local NEBO = {
     -- NEBO Camera: logins seen, next focus message (real time); see cameraTick/cameraFocusTick
     camera = { logins = 0, count = 0, nextFocus = 0 },
     dtc = { next = 0 },
+    -- Flights per side (controller workflow): unit id -> { rid, group, gname, player, type,
+    -- state, field, fieldName, since, owner }; pending handoffs: id -> { side, from, to, units,
+    -- package, khz, time }. See flightsTick.
+    flights = { sides = { blue = {}, red = {} }, dirty = {}, sent = {}, handoffs = {}, nextHandoff = 1, seeded = false },
+    -- Logged-in controllers: client id -> { side, user, callsign, position, khz, announced }
+    controllers = { list = {}, last = {} },
 }
 
 local FOOTHOLD_INTERVAL = 10  -- seconds between Foothold zone snapshots
@@ -831,15 +842,434 @@ local function pushCartridge(cmd)
     return true, "sent to " .. table.concat(sent, ", ") .. notTo
 end
 
+-- ---- Flights and controllers (coalition channels, DLL 0.17) -------------------------------
+-- The side's logged-in controllers (DLL list + what each said in controller_info) and the
+-- side's player aircraft with their state and owner, sent to the side's controllers when they
+-- change. A controller picks up a pilot (claim) and passes pilots on (handoff, which the
+-- receiver accepts or declines). Owners go when the controller logs out or the pilot leaves.
+
+local SIDE_NUM = { red = 1, blue = 2 }
+local SIDE_NAME = { [1] = "red", [2] = "blue" }
+
+local function controllerName(c)
+    if c.callsign and c.callsign ~= "" then return c.callsign end
+    if c.user and c.user ~= "" then return c.user end
+    return "a controller"
+end
+
+-- One line on the side's pilots' screens (announce_controllers in NEBO.lua).
+local function announce(sideName, text)
+    if not NEBO.cfg.announce_controllers then return end
+    net.dostring_in("server", string.format("trigger.action.outTextForCoalition(%d, %q, 15) return 'ok'", SIDE_NUM[sideName], text))
+end
+
+local function publishFlights(sideName)
+    local fl = NEBO.flights
+    local items = {}
+    for unit, f in pairs(fl.sides[sideName]) do
+        items[#items + 1] = string.format('{"unit":%d,"rid":%d,"group":%d,"gname":%s,"player":%s,"type":%s,"state":"%s","field":%d,"field_name":%s,"since":%.1f,"event":"%s","owner":%s}',
+            unit, f.rid, f.group, jstr(f.gname), jstr(f.player), jstr(f.type), f.state, f.field or 0, jstr(f.fieldName or ""),
+            f.since, f.event, f.owner and tostring(f.owner) or "null")
+    end
+    local hs = {}
+    for id, h in pairs(fl.handoffs) do
+        if h.side == sideName then
+            local units = {}
+            for _, u in ipairs(h.units) do units[#units + 1] = tostring(u) end
+            hs[#hs + 1] = string.format('{"id":%d,"from":%d,"to":%d,"units":[%s],"package":%s,"khz":%d,"time":%.1f}',
+                id, h.from, h.to, table.concat(units, ","), jstr(h.package), h.khz, h.time)
+        end
+    end
+    nebo.publish_side(sideName, "flights", string.format('{"type":"flights","coalition":"%s","flights":[%s],"handoffs":[%s]}',
+        sideName, table.concat(items, ","), table.concat(hs, ",")))
+    fl.dirty[sideName], fl.sent[sideName] = false, true
+end
+
+-- A controller logged out: their pilots are nobody's, their handoffs are gone.
+local function dropController(id)
+    local fl = NEBO.flights
+    for sideName, side in pairs(fl.sides) do
+        for _, f in pairs(side) do
+            if f.owner == id then
+                f.owner = nil
+                fl.dirty[sideName] = true
+            end
+        end
+    end
+    for hid, h in pairs(fl.handoffs) do
+        if h.from == id or h.to == id then
+            fl.handoffs[hid] = nil
+            fl.dirty[h.side] = true
+        end
+    end
+end
+
+-- A controller's areas flagged for pilots, drawn on the side's F10 map (collector's
+-- NEBO_areaDraw); redrawn only when the areas, flags, colour or callsign change, and removed
+-- when the controller goes (e.area = "").
+local function areaF10(e)
+    if not NEBO.collectorReady then return end
+    local spec, i, flags = {}, 0, e.f10 or ""
+    for a in (e.area or ""):gmatch("[^|]+") do
+        i = i + 1
+        if flags:sub(i, i) == "1" then spec[#spec + 1] = a end
+    end
+    spec = table.concat(spec, "|")
+    local key = spec == "" and "" or (spec .. "#" .. (e.color or "") .. "#" .. controllerName(e))
+    if key == (e.f10key or "") then return end
+    local result = tostring(net.dostring_in("server", string.format("return NEBO_areaDraw(%q, %q, %q, %q, %q)",
+        e.side, e.f10ids or "", e.color ~= "" and e.color or "#B0B0B0", spec ~= "" and controllerName(e) or "", spec)))
+    local ids = result:match("^ok:([%d,]*)$")
+    if ids then
+        e.f10ids, e.f10key = ids, key
+    else
+        e.f10key = key  -- not tried again until something changes
+        neboLog("areas on F10: " .. result)
+    end
+end
+
+local function controllersTick()
+    if not nebo.controllers then return end
+    local cs = NEBO.controllers
+    local seen = {}
+    for _, c in ipairs(nebo.controllers()) do
+        local e = cs.list[c.client]
+        if not e then
+            e = { side = c.coalition, position = "", khz = 0, color = "", area = "", announced = false }
+            cs.list[c.client] = e
+        end
+        e.user, e.callsign = c.user, c.callsign
+        seen[c.client] = true
+    end
+    for id, e in pairs(cs.list) do
+        if not seen[id] then
+            if e.announced then announce(e.side, "NEBO: " .. controllerName(e) .. " off station") end
+            e.area = ""
+            areaF10(e)  -- the areas the pilots saw go with the controller
+            cs.list[id] = nil
+            dropController(id)
+        end
+    end
+    for _, e in pairs(cs.list) do areaF10(e) end
+    for _, sideName in ipairs({ "blue", "red" }) do
+        local items = {}
+        for id, e in pairs(cs.list) do
+            if e.side == sideName then
+                items[#items + 1] = string.format('{"id":%d,"callsign":%s,"user":%s,"position":%s,"khz":%d,"color":%s,"area":%s,"f10":%s}',
+                    id, jstr(e.callsign), jstr(e.user), jstr(e.position), e.khz, jstr(e.color), jstr(e.area), jstr(e.f10 or ""))
+            end
+        end
+        table.sort(items)
+        local line = string.format('{"type":"controllers","coalition":"%s","controllers":[%s]}', sideName, table.concat(items, ","))
+        if line ~= cs.last[sideName] then
+            nebo.publish_side(sideName, "controllers", line)
+            cs.last[sideName] = line
+        end
+    end
+end
+
+-- One line from NEBO_flightsDrain / NEBO_flightsSeed (collector.lua): tab-separated fields.
+local function applyFlightLine(l)
+    local fl = NEBO.flights
+    local f = {}
+    for v in (l .. "\t"):gmatch("([^\t]*)\t") do f[#f + 1] = v end
+    local kind, unit = f[1], tonumber(f[2])
+    if not unit then return end
+    if kind == "gone" then
+        for sideName, side in pairs(fl.sides) do
+            if side[unit] then
+                side[unit] = nil
+                fl.dirty[sideName] = true
+            end
+        end
+        for hid, h in pairs(fl.handoffs) do
+            for i = #h.units, 1, -1 do
+                if h.units[i] == unit then
+                    table.remove(h.units, i)
+                    fl.dirty[h.side] = true
+                end
+            end
+            if #h.units == 0 then fl.handoffs[hid] = nil end
+        end
+        return
+    end
+    local sideName = SIDE_NAME[tonumber(f[8])]
+    if not sideName then return end
+    local side = fl.sides[sideName]
+    local flight = side[unit]
+    if not flight or kind == "birth" then  -- a new pilot: nobody's yet
+        flight = { field = 0, fieldName = "" }
+        side[unit] = flight
+    end
+    flight.rid, flight.group, flight.gname = tonumber(f[3]) or 0, tonumber(f[4]) or 0, f[5] or ""
+    flight.player, flight.type, flight.since, flight.event = f[6] or "", f[7] or "", tonumber(f[11]) or 0, kind
+    local field, fieldName = tonumber(f[9]) or 0, f[10] or ""
+    if kind == "air" then
+        flight.state = "air"
+    else
+        flight.state = (kind == "birth" or kind == "ground") and "ground" or kind == "takeoff" and "air" or "landed"
+        flight.field, flight.fieldName = field, fieldName
+    end
+    fl.dirty[sideName] = true
+end
+
+local function flightsTick()
+    controllersTick()
+    local fl = NEBO.flights
+    if not fl.seeded then
+        fl.seeded = true
+        local seed = net.dostring_in("server", "return NEBO_flightsSeed and NEBO_flightsSeed() or ''")
+        for l in tostring(seed or ""):gmatch("[^\n]+") do applyFlightLine(l) end
+    end
+    local batch = net.dostring_in("server", "return NEBO_flightsDrain and NEBO_flightsDrain() or ''")
+    for l in tostring(batch or ""):gmatch("[^\n]+") do applyFlightLine(l) end
+    for _, sideName in ipairs({ "blue", "red" }) do
+        if fl.dirty[sideName] or not fl.sent[sideName] then publishFlights(sideName) end
+    end
+end
+
+-- claim / release / handoff: the units must be the side's player aircraft.
+local function flightUnits(cmd)
+    local side = NEBO.flights.sides[cmd.coalition]
+    local list = {}
+    for _, u in ipairs(cmd.units) do
+        local id = tonumber(u)
+        if not side[id] then return nil, "unit " .. u .. " is not a player aircraft of your coalition (or it is gone)" end
+        list[#list + 1] = id
+    end
+    return list, side
+end
+
+local function pendingHandoff(unit)
+    for id, h in pairs(NEBO.flights.handoffs) do
+        for _, u in ipairs(h.units) do
+            if u == unit then return id, h end
+        end
+    end
+end
+
+-- Another logged-in controller owns this flight: who, for the refusal.
+local function otherOwner(f, client)
+    local e = f.owner and f.owner ~= client and NEBO.controllers.list[f.owner]
+    return e and controllerName(e) or nil
+end
+
+local function flightCommand(cmd)
+    local fl = NEBO.flights
+    if cmd.name == "controller_info" then
+        local e = NEBO.controllers.list[cmd.client]
+        if not e then
+            controllersTick()
+            e = NEBO.controllers.list[cmd.client]
+        end
+        if not e then return false, "not logged in" end
+        if cmd.text ~= "" then e.callsign = cmd.text end
+        e.position, e.khz = cmd.position, cmd.khz
+        if (cmd.color or "") ~= "" then e.color = cmd.color end
+        if not e.announced then
+            e.announced = true
+            local what = e.position == "gci" and " (GCI)" or e.position:sub(1, 4) == "atc:" and " (ATC)" or ""
+            local freq = e.khz > 0 and string.format(", %.3f", e.khz / 1000) or ""
+            announce(e.side, "NEBO: " .. controllerName(e) .. what .. " on station" .. freq)
+        end
+        NEBO.controllers.last = {}
+        controllersTick()
+        return true, tostring(cmd.client)  -- the controller's own id
+    end
+    if cmd.name == "area_set" then
+        -- The controller's area of operations, shown to the side's controllers (gone at logout).
+        local e = NEBO.controllers.list[cmd.client]
+        if not e then return false, "not logged in" end
+        e.area = cmd.area or ""
+        e.f10 = cmd.f10 or ""  -- which of them the side's pilots see on their F10 map
+        controllersTick()
+        return true
+    end
+    local units, side = flightUnits(cmd)
+    if not units then return false, side end
+    if cmd.name == "claim" then
+        for _, u in ipairs(units) do
+            local who = otherOwner(side[u], cmd.client)
+            if who then return false, who .. " has " .. side[u].player .. ": ask for a handoff" end
+            local _, h = pendingHandoff(u)
+            if h and h.from ~= cmd.client then return false, side[u].player .. " is being handed off" end
+        end
+        for _, u in ipairs(units) do side[u].owner = cmd.client end
+    elseif cmd.name == "release" then
+        for _, u in ipairs(units) do
+            if side[u].owner == cmd.client then side[u].owner = nil end
+        end
+    elseif cmd.name == "handoff" then
+        local to = NEBO.controllers.list[cmd.to]
+        if not to or to.side ~= cmd.coalition then return false, "no such controller on your side" end
+        if cmd.to == cmd.client then return false, "that is you" end
+        for _, u in ipairs(units) do
+            local who = otherOwner(side[u], cmd.client)
+            if who then return false, who .. " has " .. side[u].player end
+            if pendingHandoff(u) then return false, side[u].player .. " is already being handed off" end
+        end
+        local id = fl.nextHandoff
+        fl.nextHandoff = id + 1
+        fl.handoffs[id] = { side = cmd.coalition, from = cmd.client, to = cmd.to, units = units, package = cmd.text,
+            khz = cmd.khz, time = DCS.getModelTime() }
+        publishFlights(cmd.coalition)
+        return true, tostring(id)
+    end
+    publishFlights(cmd.coalition)
+    return true
+end
+
+local function handoffAnswer(cmd)
+    local fl = NEBO.flights
+    local h = fl.handoffs[cmd.handoff]
+    if not h or h.side ~= cmd.coalition then return false, "no such handoff (taken back or gone)" end
+    local result
+    if cmd.client == h.to then
+        local side = fl.sides[h.side]
+        local n = 0
+        if cmd.accept then
+            for _, u in ipairs(h.units) do
+                if side[u] then
+                    side[u].owner = h.to
+                    n = n + 1
+                end
+            end
+        end
+        result = cmd.accept and tostring(n) or nil
+    elseif cmd.client == h.from and not cmd.accept then
+        result = nil  -- taken back
+    else
+        return false, "not your handoff"
+    end
+    fl.handoffs[cmd.handoff] = nil
+    publishFlights(h.side)
+    return true, result
+end
+
+-- ---- Chat, mission announcements, joins (coalition channel "chat", DLL 0.17) ---------------
+-- One log per side, the last CHAT_KEEP lines, sent whole when it changes: players' chat (all
+-- chat to both sides, side chat to that side), the mission's on-screen texts for a side or for
+-- all (Foothold's new missions, captures...), players connecting and leaving, and what the
+-- side's controllers told pilots. Ids keep growing across server restarts (clients skip lines
+-- they have). relay_chat = false (NEBO.lua) turns the players' part off.
+
+local CHAT_KEEP = 60
+
+-- In the mission scripts' state: trigger.action.outText / outTextForCoalition also hand their
+-- text to the 'server' state (NEBO_announceIn), drained by chatTick. Per-unit and per-group
+-- texts (welcome, ATIS, CTLD) are left out. Wrapped once per mission.
+local ANNOUNCE_SOURCE = [==[
+if not NEBO_announceWrapped then
+    NEBO_announceWrapped = true
+    local function push(side, text)
+        text = tostring(text or "")
+        if text == "" then return end
+        if #text > 800 then text = text:sub(1, 800) .. "..." end
+        net.dostring_in("server", "NEBO_announceIn = (NEBO_announceIn or '') .. " .. string.format("%q", side .. "\031" .. text .. "\030"))
+    end
+    local ta = trigger.action
+    local outText, outTextForCoalition = ta.outText, ta.outTextForCoalition
+    if type(outText) == "function" then
+        ta.outText = function(text, ...)
+            pcall(push, "all", text)
+            return outText(text, ...)
+        end
+    end
+    if type(outTextForCoalition) == "function" then
+        ta.outTextForCoalition = function(c, text, ...)
+            if c == 1 or c == 2 then pcall(push, c == 1 and "red" or "blue", text) end
+            return outTextForCoalition(c, text, ...)
+        end
+    end
+end
+]==]
+
+NEBO.chat = { sides = { blue = {}, red = {} }, dirty = {}, wrapped = false, recent = {}, recentN = 0,
+    nextId = (os and os.time and os.time() or 0) * 100 }
+
+-- A line for the given sides' logs. to: "all", "blue", "red" or a player's name.
+local function chatAdd(sides, kind, from, text, to)
+    local ch = NEBO.chat
+    ch.nextId = ch.nextId + 1
+    -- %.0f: DCS's %d is 32-bit and these ids are not.
+    local json = string.format('{"id":%.0f,"time":%d,"kind":"%s","to":%s,"from":%s,"text":%s}',
+        ch.nextId, os and os.time and os.time() or 0, kind, jstr(to or ""), jstr(from or ""), jstr(text or ""))
+    for _, sideName in ipairs(sides) do
+        local log = ch.sides[sideName]
+        if log then
+            log[#log + 1] = json
+            if #log > CHAT_KEEP then table.remove(log, 1) end
+            ch.dirty[sideName] = true
+        end
+    end
+end
+
+local BOTH = { "blue", "red" }
+
+local function chatTick()
+    local ch = NEBO.chat
+    if not ch.wrapped then
+        ch.wrapped = true
+        net.dostring_in("mission", "a_do_script(" .. string.format("%q", ANNOUNCE_SOURCE) .. ")")
+    end
+    local raw = net.dostring_in("server", "local s = NEBO_announceIn; NEBO_announceIn = nil; return s or ''")
+    local now = DCS.getRealTime()
+    for rec in tostring(raw or ""):gmatch("([^\030]+)\030") do
+        local side, text = rec:match("^([^\031]*)\031(.*)$")
+        if side then
+            -- The same text again within 30 s (some scripts repeat a line) is one line.
+            local key = side .. "|" .. text
+            if (ch.recent[key] or -1e9) + 30 < now then
+                if ch.recentN > 300 then ch.recent, ch.recentN = {}, 0 end
+                ch.recent[key] = now
+                ch.recentN = ch.recentN + 1
+                chatAdd(side == "all" and BOTH or { side }, "mission", "Mission", text, side)
+            end
+        end
+    end
+    for _, sideName in ipairs(BOTH) do
+        if ch.dirty[sideName] then
+            ch.dirty[sideName] = false
+            nebo.publish_side(sideName, "chat", string.format('{"type":"chat","coalition":"%s","lines":[%s]}',
+                sideName, table.concat(ch.sides[sideName], ",")))
+        end
+    end
+end
+
+-- message_side: an on-screen text from the controller to the side's pilots or to everyone.
+local function messageSide(cmd)
+    local e = NEBO.controllers.list[cmd.client]
+    local name = e and controllerName(e) or "controller"
+    local text = "NEBO " .. name .. ": " .. cmd.text
+    if cmd.audience == "all" then
+        net.dostring_in("server", string.format("trigger.action.outText(%q, %d, false) return 'ok'", text, cmd.seconds))
+        chatAdd(BOTH, "nebo", name, cmd.text, "all")
+    else
+        net.dostring_in("server", string.format("trigger.action.outTextForCoalition(%d, %q, %d, false) return 'ok'",
+            SIDE_NUM[cmd.coalition], text, cmd.seconds))
+        chatAdd({ cmd.coalition }, "nebo", name, cmd.text, cmd.coalition)
+    end
+    return true
+end
+
 local function runCommand(cmd)
     if not NEBO.collectorReady then return false, "server not ready yet" end
     if cmd.name == "dtc_push" then return pushCartridge(cmd) end
+    if cmd.name == "controller_info" or cmd.name == "area_set" or cmd.name == "claim" or cmd.name == "release" or cmd.name == "handoff" then return flightCommand(cmd) end
+    if cmd.name == "handoff_answer" then return handoffAnswer(cmd) end
     if cmd.name == "message_unit" then
         local result = net.dostring_in("server", string.format("return NEBO_messageUnit(%d, %q, %d, %q)",
             cmd.unit, cmd.text, cmd.seconds, cmd.coalition))
-        if result == "ok" then return true end
+        if result == "ok" then
+            -- The side's controllers see what this pilot was told.
+            local e = NEBO.controllers.list[cmd.client]
+            local f = NEBO.flights.sides[cmd.coalition] and NEBO.flights.sides[cmd.coalition][cmd.unit]
+            chatAdd({ cmd.coalition }, "nebo", e and controllerName(e) or "controller", cmd.text, f and f.player or ("unit " .. cmd.unit))
+            return true
+        end
         return false, tostring(result)
     end
+    if cmd.name == "message_side" then return messageSide(cmd) end
     if cmd.name == "mark_add" then
         local result = tostring(net.dostring_in("server", string.format("return NEBO_markAdd(%d, %d, %q, %q, %q)",
             cmd.x, cmd.z, cmd.text, cmd.threat or "", cmd.coalition)))
@@ -1341,6 +1771,10 @@ function callbacks.onPlayerConnect(id)
         AN.byName[info.name] = p
         record(string.format('{"kind":"connect","player":%s}', playerJson(p.id, p.name)), "connect")
     end)
+    pcall(function()
+        local info = net.get_player_info(id)
+        if info and id ~= 1 then chatAdd(BOTH, "join", info.name, "connected", "all") end
+    end)
 end
 
 function callbacks.onPlayerDisconnect(id)
@@ -1349,6 +1783,7 @@ function callbacks.onPlayerDisconnect(id)
         if not p then return end
         record(string.format('{"kind":"disconnect","player":%s}', playerJson(p.id, p.name)), "disconnect")
         AN.players[id] = nil
+        chatAdd(BOTH, "leave", p.name, "left", "all")
     end)
 end
 
@@ -1360,6 +1795,24 @@ function callbacks.onPlayerChangeSlot(id)
         local unitType = info.slot and info.slot ~= "" and DCS.getUnitType and DCS.getUnitType(info.slot) or nil
         record(string.format('{"kind":"slot","player":%s,"side":%d,"unit":%s}', playerJson(p.id, p.name),
             tonumber(info.side) or 0, unitType and jstr(unitType) or "null"), "slot")
+    end)
+end
+
+-- Players' chat to the side's controllers. all: -1 all chat, -2 side chat, else a private line
+-- (skipped). Id 1 is the server: its lines (NEBO's own sends coming back) are skipped. Returns
+-- nothing: the chat line goes through unchanged.
+function callbacks.onPlayerTrySendChat(id, msg, all)
+    pcall(function()
+        if id == 1 or not NEBO.cfg.relay_chat then return end
+        local info = net.get_player_info(id)
+        local text = tostring(msg or "")
+        if not info or text == "" then return end
+        local side = SIDE_NAME[tonumber(info.side) or 0]
+        if all == -1 or (all == -2 and not side) then
+            chatAdd(BOTH, "chat", info.name, text, "all")
+        elseif all == -2 then
+            chatAdd({ side }, "side", info.name, text, side)
+        end
     end)
 end
 
@@ -1376,6 +1829,8 @@ function callbacks.onSimulationStart()
     NEBO.sched = {}  -- the per-interval jobs start again at their phases
     -- A new mission may be on another terrain; the collector is re-injected as well.
     NEBO.collectorReady = false
+    NEBO.chat.wrapped = false  -- the new mission's scripts get the announcement wrapper again
+    for _, e in pairs(NEBO.controllers.list) do e.f10key, e.f10ids = nil, nil end  -- the old mission's drawings are gone
     NEBO.theatreSent = false
     NEBO.terrain = nil
     NEBO.foothold = { injected = false, absent = false, next = 0, last = nil }
@@ -1387,6 +1842,8 @@ function callbacks.onSimulationStart()
     NEBO.nctrLast = {}
     NEBO.pilotsLast = {}
     NEBO.designations = { next = 0, sides = { blue = {}, red = {} }, published = {} }
+    -- pilots and handoffs belong to the mission; controllers stay logged in
+    NEBO.flights = { sides = { blue = {}, red = {} }, dirty = {}, sent = {}, handoffs = {}, nextHandoff = 1, seeded = false }
 end
 
 -- ---- Heavy jobs: at most one per server frame -------------------------------------------
@@ -1454,6 +1911,8 @@ local JOBS = {
     { name = "analytics", when = every("analytics", 0.6), cond = ready, run = analyticsTick },
     { name = "threats", when = every("threats", 0.7), cond = ready, run = launchesTick },
     { name = "nctr", when = every("nctr", 0.8), cond = ready, run = nctrTick },
+    { name = "flights", when = every("flights", 0.5), cond = ready, run = flightsTick },
+    { name = "chat", when = every("chat", 0.3), cond = ready, run = chatTick },
     { name = "probe", when = every("probe", 0.9), cond = function() return NEBO.cfg.dev_probe and NEBO.collectorReady end, run = runProbe },
     { name = "camera", when = every("camera", 0.4, function() return tonumber(NEBO.cfg.camera_interval) or 1 end),
       cond = function() return NEBO.collectorReady and NEBO.camera.count > 0 end, run = cameraTick },

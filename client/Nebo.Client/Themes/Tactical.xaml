@@ -460,9 +460,22 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="DataGridColumnHeader">
-                    <Border Background="{DynamicResource Nebo.PanelAlt}" BorderBrush="{DynamicResource Nebo.Border}" BorderThickness="0,0,1,1" Padding="6,3">
-                        <ContentPresenter/>
-                    </Border>
+                    <!-- The two grippers (PART_ names the DataGrid looks for) resize the column. -->
+                    <Grid>
+                        <Border Background="{DynamicResource Nebo.PanelAlt}" BorderBrush="{DynamicResource Nebo.Border}" BorderThickness="0,0,1,1" Padding="6,3">
+                            <ContentPresenter/>
+                        </Border>
+                        <Thumb x:Name="PART_LeftHeaderGripper" HorizontalAlignment="Left" Width="6" Cursor="SizeWE">
+                            <Thumb.Template>
+                                <ControlTemplate TargetType="Thumb"><Border Background="Transparent"/></ControlTemplate>
+                            </Thumb.Template>
+                        </Thumb>
+                        <Thumb x:Name="PART_RightHeaderGripper" HorizontalAlignment="Right" Width="6" Cursor="SizeWE">
+                            <Thumb.Template>
+                                <ControlTemplate TargetType="Thumb"><Border Background="Transparent"/></ControlTemplate>
+                            </Thumb.Template>
+                        </Thumb>
+                    </Grid>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

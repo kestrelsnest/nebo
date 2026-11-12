@@ -24,6 +24,7 @@
                 <MenuItem Header="_ATC" Click="ShowAtc_Click"/>
                 <MenuItem Header="_Packages" Click="ShowPackages_Click"/>
                 <MenuItem Header="_Engagements" Click="ShowEngagements_Click"/>
+                <MenuItem Header="_Chat" Click="ShowChat_Click" ToolTip="The server's chat, the mission's announcements, players joining; texts to your side's pilots"/>
                 <MenuItem Header="ATC _views">
                     <MenuItem Header="_Diagram" Tag="view:diagram" Click="ShowAtcView_Click"/>
                     <MenuItem Header="_Approach" Tag="view:approach" Click="ShowAtcView_Click"/>

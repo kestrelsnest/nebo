@@ -11,12 +11,12 @@
             <ColumnDefinition Width="210"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+            <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
         </Grid.RowDefinitions>
 
         <!-- Saved servers: pick one and Connect (double-click connects at once). -->
         <TextBlock Text="Servers" FontWeight="SemiBold" Margin="0,0,0,4"/>
-        <ListBox x:Name="ServerList" Grid.Row="1" Grid.RowSpan="6" Height="210"
+        <ListBox x:Name="ServerList" Grid.Row="1" Grid.RowSpan="8" Height="270"
                  SelectionChanged="ServerList_SelectionChanged" MouseDoubleClick="ServerList_DoubleClick">
             <ListBox.ItemTemplate>
                 <DataTemplate>
@@ -27,7 +27,7 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
-        <StackPanel Grid.Row="7" Orientation="Horizontal" Margin="0,6,0,0">
+        <StackPanel Grid.Row="9" Orientation="Horizontal" Margin="0,6,0,0">
             <Button Content="New" Width="64" Click="New_Click" ToolTip="A new server: fill in the fields on the right"/>
             <Button x:Name="DeleteButton" Content="Delete" Width="64" Margin="6,0,0,0" Click="Delete_Click" ToolTip="Forget the selected server"/>
         </StackPanel>
@@ -55,10 +55,16 @@
                          ToolTip="Your coalition's SRS External AWACS Mode password; empty = no SRS"/>
             <TextBlock x:Name="EamHint" Text="(saved)" Opacity="0.5" Margin="6,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
         </Grid>
-        <TextBlock Grid.Column="2" Grid.ColumnSpan="2" Grid.Row="6" TextWrapping="Wrap" Width="260" HorizontalAlignment="Left" Opacity="0.7" FontSize="11"
+        <TextBlock Grid.Column="2" Grid.Row="6" Text="Callsign" VerticalAlignment="Center" Margin="0,0,8,6"/>
+        <TextBox x:Name="CallsignBox" Grid.Column="3" Grid.Row="6" Margin="0,0,0,6" MaxLength="24"
+                 ToolTip="Your controller callsign (e.g. Overlord, Akrotiri Tower). Pilots on your side see it when you come on station"/>
+        <TextBlock Grid.Column="2" Grid.Row="7" Text="Colour" VerticalAlignment="Center" Margin="0,0,8,6"/>
+        <StackPanel x:Name="ColorPanel" Grid.Column="3" Grid.Row="7" Orientation="Horizontal" Margin="0,0,0,6"
+                    ToolTip="The colour your jets are marked in on every controller's map, and your area of operations"/>
+        <TextBlock Grid.Column="2" Grid.ColumnSpan="2" Grid.Row="8" TextWrapping="Wrap" Width="260" HorizontalAlignment="Left" Opacity="0.7" FontSize="11"
                    Text="Servers with Discord login open an Authorize popup in your Discord app. You pick Blue or Red after logging in."/>
 
-        <StackPanel Grid.Row="7" Grid.Column="2" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
+        <StackPanel Grid.Row="9" Grid.Column="2" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
             <TextBlock x:Name="ErrorText" Foreground="Firebrick" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <Button Content="Connect" Width="80" IsDefault="True" Click="Connect_Click"/>
             <Button Content="Cancel" Width="80" Margin="6,0,0,0" IsCancel="True"/>

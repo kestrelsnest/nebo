@@ -118,6 +118,14 @@ public sealed class ServerProfile
     public string? ProtectedEamPassword { get; set; }
     /// <summary>The side last joined on this server ("blue"/"red"): the side picker's default.</summary>
     public string? LastSide { get; set; }
+    /// <summary>The controller's callsign on this server, announced to the side's pilots (0.17).</summary>
+    public string? Callsign { get; set; }
+    /// <summary>The colour the controller's jets and area are marked in ("#rrggbb", 0.17).</summary>
+    public string? Color { get; set; }
+    /// <summary>The controller's area of operations on this server ("lat,lon;…"), sent again on connect.</summary>
+    public string? Area { get; set; }
+    /// <summary>Which of the areas the side's pilots see on their F10 map ("0110").</summary>
+    public string? AreaF10 { get; set; }
 
     [System.Text.Json.Serialization.JsonIgnore]
     public bool HasPassword => ProtectedPassword is not null;
@@ -184,6 +192,8 @@ public sealed class MapSettings
     public bool ShowDiagrams { get; set; } = true;
     /// <summary>MGRS grid on the DCS Map base map.</summary>
     public bool ShowGrid { get; set; }
+    /// <summary>Other controllers' areas and owner colours on this map (0.17).</summary>
+    public OwnerView Owners { get; set; } = OwnerView.All;
     /// <summary>Base map brightness, 0.2..1; markers and overlays are not dimmed.</summary>
     public double Brightness { get; set; } = 1.0;
     public double? CenterX { get; set; }
@@ -271,8 +281,15 @@ public sealed class AppSettings
     public int DeckPort { get; set; } = 47810;
     /// <summary>Contacts within this many NM of the mouse show their full labels (Settings → General).</summary>
     public double LabelHoverNm { get; set; } = 10;
+    /// <summary>When the maps draw (Settings → General): "change" (only when something changed;
+    /// the default), "hover" (every display frame while the mouse is on that map), "always"
+    /// (every display frame). Drawing all the time keeps the GPU and WPF's frame loop awake, so
+    /// the first frames of a zoom or drag are not late; it costs GPU time.</summary>
+    public string MapFrames { get; set; } = "change";
     /// <summary>The controller's tags on players (Core.ObjectTags: "p:&lt;name&gt;" → tag).</summary>
     public Dictionary<string, string> ObjectTags { get; set; } = [];
+    /// <summary>Every table's columns as the controller left them ("ObjectsPanel.Grid" → column → state).</summary>
+    public Dictionary<string, Dictionary<string, ColumnState>> Tables { get; set; } = [];
     /// <summary>Where the main window was.</summary>
     public WindowPlacement? MainPlacement { get; set; }
     /// <summary>Extra workspace windows of older versions (before tabs): turned into tabs once.</summary>

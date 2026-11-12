@@ -18,6 +18,10 @@ public sealed class FootholdSk : MapLayer
     private static readonly float[] SuspendedDash = MapStyle.Dash("zones.suspendedDash");
     private static readonly Text.Face LabelFace = Text.FaceOf(MapStyle.Text("zones.label.font"));
     private static readonly float LabelSize = MapStyle.Number("zones.label.size");
+    private static readonly SKColor TagInk = MapStyle.Color("zones.tags.color");
+    private static readonly Text.Face TagFace = Text.FaceOf(MapStyle.Text("zones.tags.font"));
+    private static readonly float TagSize = MapStyle.Number("zones.tags.size");
+    private static readonly double TagFullMaxUnitsPerDip = MapStyle.Number("zones.tags.fullMaxMetersPerDip");
 
     public SKColor Halo { get; set; } = SkPalette.HaloDark;
     public string? SelectedZone { get; set; }
@@ -59,6 +63,10 @@ public sealed class FootholdSk : MapLayer
             SkClip.Line(canvas, LinkPen, a.Center + new SKPoint(u.X * a.Radius, u.Y * a.Radius), b.Center - new SKPoint(u.X * b.Radius, u.Y * b.Radius), area);
         }
         var labels = view.UnitsPerDip <= LabelMaxUnitsPerDip;
+        // Our side's Foothold missions: compact badges ("RWY · SEAD"), the F10 map's full lines
+        // ("Bomb runway!") once zoomed in close.
+        var coalition = AppState.Store.Coalition;
+        var fullTags = view.UnitsPerDip <= TagFullMaxUnitsPerDip;
         foreach (var z in state.Zones)
         {
             var (c, r) = circles[z.Name];
@@ -72,12 +80,21 @@ public sealed class FootholdSk : MapLayer
             if (!labels) continue;
             var title = z.Waypoint is { } w ? $"{z.Name} · {w}" : z.Name;
             var (_, th) = Text.DrawCentered(canvas, title, c.X, c.Y + r + 3, solid, Halo, LabelFace, LabelSize);
+            var y = c.Y + r + 3 + th + 1;
             if (z.Strength is { } s)
             {
-                var bar = SKRect.Create(c.X - 18, c.Y + r + 3 + th + 1, 36, 4);
+                var bar = SKRect.Create(c.X - 18, y, 36, 4);
                 canvas.DrawRect(bar, Ink.Fill(Halo));
                 canvas.DrawRect(SKRect.Create(bar.Left, bar.Top, bar.Width * (float)s, bar.Height), Ink.Fill(solid));
+                y += 6;
             }
+            var tags = z.TagsFor(coalition).ToList();
+            if (tags.Count == 0) continue;
+            if (fullTags)
+                foreach (var t in tags)
+                    y += Text.DrawCentered(canvas, t.Text, c.X, y, TagInk, Halo, TagFace, TagSize).Item2;
+            else
+                Text.DrawCentered(canvas, string.Join(" · ", tags.Select(t => t.Badge)), c.X, y, TagInk, Halo, TagFace, TagSize);
         }
     }
 }

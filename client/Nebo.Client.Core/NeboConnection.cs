@@ -92,7 +92,8 @@ public sealed class NeboConnection : IAsyncDisposable
                 ? s.EnumerateArray().Select(e => e.GetString() ?? "").Where(x => x.Length > 0).ToList() : [];
 
             var side = await login.ChooseSide(sides, user) ?? throw new AuthenticationException("No side chosen.");
-            await SendLineAsync(stream, new { type = "side", coalition = side }, ct);
+            // The callsign (DLL 0.17) is announced to the side's pilots; older servers ignore it.
+            await SendLineAsync(stream, new { type = "side", coalition = side, callsign = login.Callsign ?? "" }, ct);
             using var sideOk = await ReadReplyAsync(reader, ct);
             if (Str(sideOk.RootElement, "type") != "side_ok") throw Refused(sideOk.RootElement);
             return new NeboConnection(tcp, reader, Str(sideOk.RootElement, "coalition") ?? side) { User = user };
@@ -189,6 +190,9 @@ public sealed class NeboConnection : IAsyncDisposable
                 "threats" => doc.RootElement.Deserialize<ThreatsMessage>(),
                 "nctr" => doc.RootElement.Deserialize<NctrMessage>(),
                 "pilots" => doc.RootElement.Deserialize<Dtc.PilotsMessage>(),
+                "controllers" => doc.RootElement.Deserialize<ControllersMessage>(),
+                "flights" => doc.RootElement.Deserialize<FlightsMessage>(),
+                "chat" => doc.RootElement.Deserialize<ChatMessage>(),
                 "designations" => doc.RootElement.Deserialize<DesignationsMessage>(),
                 "dtc_live" => System.Text.Json.Nodes.JsonNode.Parse(doc.RootElement.GetRawText()) as System.Text.Json.Nodes.JsonObject,
                 "closed" => doc.RootElement.Deserialize<ClosedMessage>(),
@@ -223,8 +227,11 @@ public sealed class NeboConnection : IAsyncDisposable
 
 /// <summary>How a login asks for what it needs: the server password (read only once Discord has
 /// passed), the side to join among those the server offers (with the verified Discord name, if
-/// any; null = cancel), and progress lines for the status bar.</summary>
+/// any; null = cancel), progress lines for the status bar, and the controller's callsign
+/// (announced to the side's pilots by DLL 0.17) with the colour their jets are marked in.</summary>
 public sealed record LoginOptions(
     Func<string?> Password,
     Func<IReadOnlyList<string>, string?, Task<string?>> ChooseSide,
-    Action<string>? Progress = null);
+    Action<string>? Progress = null,
+    string? Callsign = null,
+    string? Color = null);

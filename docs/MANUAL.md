@@ -74,7 +74,11 @@ setup (*Settings → General → Updates* turns the check off).
    ![DCS location](images/dcs-location.png)
 4. **Connection → Connect…**: pick a server from the list and **Connect** (or double-click
    it). **New** adds one: a name, its address, the NEBO port and the SRS port, the
-   server password (from the admin) and your SRS External AWACS Mode password. Connect saves a
+   server password (from the admin), your SRS External AWACS Mode password and your
+   **callsign** (required; e.g. "Overlord", "Akrotiri Tower"; up to 24 letters, digits, spaces
+   and `- / . ' :`) and your **colour** (your pilots and area are marked in it on every
+   controller's map). On 0.17 servers your side's pilots see "NEBO: Overlord (GCI) on station,
+   251.000" when you log in. Connect saves a
    named server; **Delete** forgets it. Saved passwords are kept encrypted for your Windows user
    and show as "(saved)": type in the box only to change one.
 5. **Logging in.** On a server with Discord login, an **Authorize** popup opens in your Discord
@@ -224,7 +228,9 @@ select and move the map; right-click always opens the menu.
 - **Messages to pilots**: right-click an own player's aircraft → *Send ATIS / airfield info*: the
   text appears on that pilot's screen (not in chat).
 - **Foothold**: zones by owner with strength bars, links, logistics; the Zones panel lists them
-  with credits and the mission board.
+  with credits and the mission board. Your side's missions on a zone show under its name as
+  on the F10 map: short badges (RWY, SEAD, DEAD, ATK, CAPT, RCN, SUP), the full lines
+  ("Bomb runway!") when zoomed in close.
 
 ## 6. RWR, identification, NCTR and threats
 
@@ -335,6 +341,61 @@ The list starts with your own side's airfields only (tick Red / Neutral for the 
   base the ATC tab shows, else the nearest airfield. Queued aircraft show "#n" on the scopes. It
   is your own planning board; pilots do not see it.
 - **Set CH6**: tunes your SRS channel 6 to the airfield's tower frequency.
+
+### Pilots and other controllers (server 0.17)
+
+**Messages** appear in the bottom-right corner of every map, newest at the bottom, like a
+messenger: controllers coming on and off station, new pilots, handoffs, your pilots taking off,
+and what your actions did. Messages that need you have a thick border, buttons and a chime and
+stay until answered; the rest fade out and go after 20 s (pointing at one keeps it readable). ✕ dismisses one. A message goes by itself once it no longer applies (another
+controller took the pilot, the handoff was answered).
+
+The **Objects** list shows, for each player, the controller who has him (**Ctl**, in that
+controller's colour; "me" for yours) and his flight (**Flight**: the airfield he is on, ↑ the one
+he took off from, ↓ the one he landed at). Right-click a player there or on a map for **Take**,
+**Hand off to ▸** and **Release**.
+
+- **A new pilot** nobody has: a message with **Take**. Taking him makes him yours: one of your
+  ATC channels **CH4–CH6** is tuned to his airfield's tower (the one already on it, else an empty
+  one, else the one used longest ago), you transmit on it, and he gets an on-screen text: "NEBO:
+  Overlord, Akrotiri Tower, with you on 251.000 AM. Call when ready to taxi." Two controllers
+  can't hold the same pilot.
+- **Airborne.** When one of your pilots takes off, a message tells you, with **Keep**: you go
+  back to the channel you used before taking him and he is told to contact you there. Nothing
+  happens by itself.
+- **Hand off** offers a pilot to another controller; a pilot in one of your packages can go with
+  the whole package (its name and frequency go along). The other controller gets a message with
+  **Accept** / **Decline**; you see *Offered … waiting* (**Take back** withdraws it). While the
+  offer waits, the pilot's symbol blinks white on every controller's map. On accept,
+  the pilots get a text to contact the new controller, and a handed-over package fills one of the
+  receiver's free packages.
+- **Your colour** (picked in the Connect dialog) is the colour your pilots' symbols and data
+  blocks are drawn in on every controller's map (over a package's colour), and draws your area.
+- **Areas of operations**: **Area** at the front of the map's filter row draws one: click its
+  corners (3–40); to finish, click the first corner again, double-click the last one, press
+  Enter or click **Done**. Backspace takes the last corner back, Esc cancels. Draw up to 10.
+  Every controller of your side sees them with your callsign. A new pilot inside one of your
+  areas alerts you (thick border, chime); controllers whose area he is not in get a quiet line.
+  A pilot in nobody's area alerts everyone. Right-click inside one of yours → *Remove this area
+  of operations*, or *Remove all my areas*. NEBO keeps them with the server and sends them again
+  when you reconnect.
+  Right-click inside one of yours → *Show this area to pilots (F10)*: your side's pilots see it
+  on their F10 map, in your colour with your callsign, and cannot delete it; its label in NEBO
+  gets "· F10". *Hide this area from pilots* takes it off again; so do removing it and logging
+  out.
+- **Entering another controller's area.** When an airborne pilot of yours flies into another
+  controller's area of operations (and is in none of yours), a message offers **Hand off to
+  <callsign>** (they accept as usual) or **Keep**. It asks once per entry: again only after he
+  left the area and came back. No areas drawn, no prompts.
+- **Chat** (Window → Chat; beside SRS in new layouts): the server's chat as your side sees it —
+  all chat, your side's chat, the mission's announcements for your side or for all (new missions,
+  captures), players connecting and leaving, and what your side's controllers told pilots. The
+  chips filter it. Below, a text to **My side** or **Everyone**: pilots see it on screen for 15 s
+  as "NEBO Overlord: …". The tray shows players connecting and leaving, and chat lines that
+  mention your callsign, GCI, ATC, AWACS or NEBO. The server owner can keep players' chat out
+  (`relay_chat = false` in NEBO.lua).
+- **Owners: all / mine / off** on the map's toolbar: everyone's areas and owner colours, only
+  yours, or none, when the map gets busy.
 - **ATIS…** / **Airfield info…**: built from the server's live weather and the airfield,
   editable, sent as an on-screen text to a pilot.
 
@@ -373,8 +434,9 @@ the status bar at the bottom (click it for Settings → SRS).
 - **Transmit range on the maps**: light blue where an aircraft at the chosen altitude (default
   10,000 ft, set in Settings → SRS) hears you, mountains included — the clear gaps are terrain
   shadows — and a dashed circle at the radio horizon. It follows a carrier or AWACS as it moves.
-- **Tuning**: type a frequency or use the airfield's tower frequencies. Channel plan: CH6 = ATC,
-  CH7–CH10 = packages P1–P4 (set from the Packages panel), CH1–5 free. **Save as default** keeps
+- **Tuning**: type a frequency or use the airfield's tower frequencies. Channel plan: CH4–CH6 =
+  ATC (taking a pilot uses them; CH6 is also the ATC tab's), CH7–CH10 = packages
+  P1–P4 (set from the Packages panel), CH1–3 free. **Save as default** keeps
   your ten channels: whenever the SRS app connects, NEBO tunes them in instead of the
   app's own presets.
 - **Listen**: NEBO can also join the SRS server itself, receive-only (others see
@@ -386,6 +448,10 @@ the status bar at the bottom (click it for Settings → SRS).
 
 ## 11. Several screens, themes, layout
 
+**Tables** (Objects, Zones, ATC list, Engagements, the DTC tables): drag a column header's edge
+to resize it, drag a header to move the column, and right-click any header to hide or show
+columns (**Show all columns**, **Reset columns**). Each table keeps its columns as you left them.
+
 - **⇱** on the GCI or ATC tab (or *Window → Detach this tab*) moves that workspace into a window
   of its own, e.g. ATC on a second screen; it keeps its panels and comes back as a tab with ⇤
   or by closing its window. *Window → New tab* adds another GCI or ATC workspace.
@@ -393,6 +459,9 @@ the status bar at the bottom (click it for Settings → SRS).
 - **Settings** (top menu): theme, map data, key bindings, alarms and SRS in one window.
 - *Settings → General → Theme*: System, Dark or Light. The scopes stay dark and the airport diagram stays
   white.
+- *Settings → General → Map frame rate*: maps draw only when something changes (the default), at
+  full frame rate while the mouse is on a map, or always. Full frame rate keeps zooms and drags
+  smooth from their first frame and costs GPU time, more with several maps open.
 - Windows, panels and map settings come back on the next start; *Window → Save layout* saves
   them now, *Window → Reset layout* restores the default.
 

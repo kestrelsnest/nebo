@@ -161,9 +161,9 @@ public partial class SrsPanel : UserControl
             var mhz = SrsChannels.Mhz(ch);
             if (!row.Box.IsKeyboardFocusWithin) row.Box.Text = Format(mhz);
             var package = ChannelPlan.PackageOf(ch);
-            row.Role.Text = package > 0 ? $"P{package} {AppState.Packages[package].Name}" : ch == ChannelPlan.Atc ? "ATC" : SrsChannels.RadioName(ch) is { Length: > 0 } radioName ? radioName : "free";
-            row.RoleBadge.Background = package > 0 ? PackageColors.Brush(package) : ch == ChannelPlan.Atc ? AtcBrush : Brushes.Transparent;
-            row.Role.Foreground = package > 0 || ch == ChannelPlan.Atc ? Brushes.Black : Themes.ThemeBrush.Get("Nebo.TextDim");
+            row.Role.Text = package > 0 ? $"P{package} {AppState.Packages[package].Name}" : ChannelPlan.IsAtc(ch) ? "ATC" : SrsChannels.RadioName(ch) is { Length: > 0 } radioName ? radioName : "free";
+            row.RoleBadge.Background = package > 0 ? PackageColors.Brush(package) : ChannelPlan.IsAtc(ch) ? AtcBrush : Brushes.Transparent;
+            row.Role.Foreground = package > 0 || ChannelPlan.IsAtc(ch) ? Brushes.Black : Themes.ThemeBrush.Get("Nebo.TextDim");
             var transmitting = SrsChannels.Transmitting == ch;
             var sending = SrsChannels.SendingNow == ch;
             row.Tx.Background = sending ? SendingBrush : transmitting ? TxBrush : Themes.ThemeBrush.Get("Nebo.PanelAlt");

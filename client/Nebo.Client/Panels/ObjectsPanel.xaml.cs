@@ -31,6 +31,11 @@ public sealed class TrackRow(long id) : INotifyPropertyChanged
     public Brush? PackageBrush { get; private set; }
     /// <summary>The controller's tag on it (AppState.Tags), shown on the maps too.</summary>
     public string? Tag { get; private set; }
+    /// <summary>A player's controller ("me", a callsign), in that controller's colour (DLL 0.17).</summary>
+    public string? Owner { get; private set; }
+    public Brush? OwnerBrush { get; private set; }
+    /// <summary>A player's flight: "Akrotiri", "↑ Akrotiri" (took off), "↓ Incirlik" (landed).</summary>
+    public string? Flight { get; private set; }
 
     public string IdentityText => Identity.ToString();
     public Brush Brush => Themes.ThemeBrush.Get(Identity switch
@@ -65,12 +70,34 @@ public sealed class TrackRow(long id) : INotifyPropertyChanged
         Set(Lost, t.Lost, v => Lost = v);
         Set(IsPlayer, u.Player is not null, v => IsPlayer = v);
         Set(Tag, AppState.Tags.Get(u), v => Tag = v);
+        var board = AppState.Flights;
+        var flight = board.Flight(u.Id);
+        if (Set(Owner, flight is null ? null : board.OwnerName(flight) is { Length: > 0 } o ? o : "—", v => Owner = v))
+        {
+            OwnerBrush = flight is null ? null : FlightDesk.ColorOf(board.Controller(flight.Owner)) is { } c ? Frozen(c) : null;
+            Changed(nameof(OwnerBrush));
+        }
+        Set(Flight, flight is null ? null : FlightText(flight), v => Flight = v);
         var package = AppState.Packages.PackageOf(u.Id);
         if (Set(Package, package?.Tag, v => Package = v))
         {
             PackageBrush = package is null ? null : PackageColors.Brush(package.Number);
             Changed(nameof(PackageBrush));
         }
+    }
+
+    private static string FlightText(FlightInfo f) => f.State switch
+    {
+        "air" => f.Event == "takeoff" && f.FieldName.Length > 0 ? $"↑ {f.FieldName}" : "airborne",
+        "landed" => f.FieldName.Length > 0 ? $"↓ {f.FieldName}" : "landed",
+        _ => f.FieldName.Length > 0 ? f.FieldName : "on ground",
+    };
+
+    private static SolidColorBrush Frozen(Color c)
+    {
+        var b = new SolidColorBrush(c);
+        b.Freeze();
+        return b;
     }
 
     private bool Set<T>(T current, T value, Action<T> assign, [CallerArgumentExpression(nameof(current))] string name = "")
@@ -104,6 +131,7 @@ public partial class ObjectsPanel : UserControl
             AppState.Store.Changed += QueueRefresh;
             AppState.Packages.Changed += QueueRefresh;
             AppState.Tags.Changed += QueueRefresh;
+            AppState.Flights.Changed += QueueRefresh;
             AppState.Store.SelectionChanged += SyncSelectionFromStore;
             Themes.ThemeManager.Changed += ThemeChanged;
             Refresh();
@@ -113,6 +141,7 @@ public partial class ObjectsPanel : UserControl
             AppState.Store.Changed -= QueueRefresh;
             AppState.Packages.Changed -= QueueRefresh;
             AppState.Tags.Changed -= QueueRefresh;
+            AppState.Flights.Changed -= QueueRefresh;
             AppState.Store.SelectionChanged -= SyncSelectionFromStore;
             Themes.ThemeManager.Changed -= ThemeChanged;
         };
@@ -219,6 +248,12 @@ public partial class ObjectsPanel : UserControl
         if (!PackageMenu.Packable(u)) return;
         menu.Items.Add(new Separator());
         foreach (var item in PackageMenu.Items(u)) menu.Items.Add(item);
+        var flightItems = FlightDesk.MenuItems(u.Id).ToList();
+        if (flightItems.Count > 0)
+        {
+            menu.Items.Add(new Separator());
+            foreach (var item in flightItems) menu.Items.Add(item);
+        }
         if (PackageMenu.ListenItem(u, this) is { } listen)
         {
             menu.Items.Add(new Separator());

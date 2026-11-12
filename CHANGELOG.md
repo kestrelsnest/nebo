@@ -4,6 +4,66 @@ NEBO ATC/GCI by Kestrel's Nest Community, formerly Overseer and Eagle's Nest (co
 Newest first. Dates are commit dates. "DLL" is the server module (`nebo.dll`, before 0.16.0
 `dcb.dll`), whose version goes up together with the protocol.
 
+## 0.17.0 — 2026-11-12
+**Controllers and pilots**
+- A **callsign** in the Connect dialog (required, per server). On a 0.17 server the side's
+  pilots see "NEBO: Overlord (GCI) on station, 251.000" when a controller logs in and "off
+  station" when they leave (`announce_controllers` in NEBO.lua).
+- **Messages** in the bottom-right corner of every map, like a messenger: controllers on and off
+  station (with a sound), new pilots, handoffs, take-offs, results; buttons on the ones that need
+  you (Take, Accept / Decline, Hand off / Keep).
+  - **Take** a new pilot: an ATC channel (CH4–CH6) goes to his tower, you transmit there, and
+    he gets an on-screen text with your callsign and the frequency.
+  - After take-off: **Keep** (back to your channel, he is told to contact you there).
+  - **Hand off** a pilot or a whole package to another controller, who accepts or declines;
+    the pilot blinks on the maps until they answer.
+- **Objects**: who has each player (**Ctl**, in that controller's colour) and his flight
+  (airfield, took off from, landed at); right-click for Take, Hand off, Release (maps too).
+- A **colour** per controller (Connect dialog): their pilots are drawn in it on every
+  controller's map.
+- **Areas of operations**: each controller draws up to 10 on the map (Area button, at the front
+  of the filter row); every controller of the side sees them. A new pilot in one of your areas
+  alerts you first. Right-click inside one to remove it, or to show it to your side's pilots on
+  their F10 map (*Show this area to pilots*).
+- **Owners: all / mine / off** map button: everyone's areas and owner colours, only yours, or none.
+- **Entering another controller's area**: your airborne pilot flying into it brings a one-click
+  hand-off to them, once per entry.
+- **Foothold missions on the map**: the missions under a zone's name on your side's F10 map, as
+  badges (RWY · SEAD) or, zoomed in close, the full lines ("Bomb runway!").
+- **Map frame rate** (Settings → General): draw on change (default), at full frame rate while
+  the mouse is on a map, or always.
+- A **slow-frame log** (`%LocalAppData%\NEBO\slow-frames.log`): slow frames, missed frames during
+  a zoom, and wheel notches or drags that reach the screen late, with the slowest map layers.
+- **Chat panel**: the server's all chat and side chat, the mission's announcements, players
+  joining and leaving, and controllers' texts to pilots; send an on-screen text to your side or to
+  everyone. Joins and chat that mention you or GCI/ATC show in the tray.
+
+**Tables**
+- Every table: resize columns by dragging a header's edge (the dark theme's headers had lost
+  their grips), move them by dragging a header, hide and show them from a right-click on a
+  header. Each table remembers its columns.
+- SRS channel plan: CH4–CH6 are ATC channels (were CH6 only); CH1–3 free.
+
+**Fixed**
+- Zooming stopped, then jumped: during a smooth zoom the map asked for frames ahead of the
+  mouse, so wheel notches reached NEBO up to a second late and all at once. Frames now wait for
+  input, and the map draws up to the screen's refresh rate (was about 80 fps).
+- Rivers and roads on the Scope and DCS Map base maps are joined into long lines and simplified
+  for the zoom level, still smooth (GPU time per frame from 14–30 ms to about 2–3 ms); the
+  simplified lines are built in the background when a map opens, so the first zoom no longer
+  stalls. The GPU cache is larger.
+- Foothold's zone labels showed as F10 mark pins around the zones: they sit exactly on the zone
+  edge, which the filter missed.
+- Areas drawn on the F10 map by scripts (and controllers' areas for pilots) no longer show as
+  mark pins; the server leaves them out of the marks too.
+
+**Server (DLL 0.17)**
+- New commands `controller_info` (with `color`), `area_set` (with `f10`), `claim`, `release`,
+  `handoff`, `handoff_answer`, `message_side`; new coalition messages `controllers`, `flights`
+  and `chat` (docs/PROTOCOL.md). Older clients ignore them.
+- The hook reads players' chat and the mission's on-screen texts for a side or all, and draws
+  areas flagged for pilots on their F10 map. `relay_chat = false` in NEBO.lua keeps chat out.
+
 ## 0.16.0 — 2026-11-11 · NEBO
 **One setup**
 - `NEBO-Setup-0.16.0.exe` installs every part for the Windows user: controller app, Stream Deck

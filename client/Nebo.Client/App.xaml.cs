@@ -10,10 +10,16 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         AppPaths.MigrateFromDcb();  // before anything reads settings
+        // Diagnosis: NEBO_WPF=software draws the windows without the GPU (with NEBO_RENDERER=cpu).
+        if (Environment.GetEnvironmentVariable("NEBO_WPF") == "software")
+            System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
         base.OnStartup(e);
         Themes.ThemeManager.Initialize();
         LaunchAlarm.Start();
         EngagementAlert.Start();
+        FlightDesk.Start();
+        UiOps.Start(Dispatcher);
+        TableColumns.Start();
         Srs.SrsChannels.Start();
         Integration.DeckLink.Start();
         // Data cartridge tables come from the controller's own DCS install (made on first use).

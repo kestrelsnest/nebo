@@ -17,9 +17,9 @@ public sealed class ScopeLinesSk : MapLayer
     public override void Draw(SKCanvas canvas, in MapFrame frame)
     {
         var data = ScopeBaseMapData.Instance;
-        Lines(canvas, frame.View, data.Lakes, Lakes);
-        Lines(canvas, frame.View, data.Borders, Borders);
-        Lines(canvas, frame.View, data.Coast, Coast);
+        Lines(canvas, frame.View, data.Lakes, SkDraw.Hairline(Lakes, frame.PixelsPerDip));
+        Lines(canvas, frame.View, data.Borders, SkDraw.Hairline(Borders, frame.PixelsPerDip));
+        Lines(canvas, frame.View, data.Coast, SkDraw.Hairline(Coast, frame.PixelsPerDip));
     }
 
     private static void Lines(SKCanvas canvas, MapView view, IReadOnlyList<ScopeBaseMapData.Line> lines, Ink.Pen pen)
@@ -139,14 +139,18 @@ public sealed class ScopeFeaturesSk : MapLayer
     private static readonly (SKColor Color, float Width) Primary = (MapStyle.Color("scope.roads.color"), MapStyle.Number("scope.roads.width"));
     private readonly VectorBuckets _buckets = new();
 
-    public ScopeFeaturesSk() => DcsVectorMap.Loaded += Invalidate;
+    public ScopeFeaturesSk()
+    {
+        DcsVectorMap.Loaded += Invalidate;
+        _buckets.Built += Invalidate;
+    }
 
     public override void Draw(SKCanvas canvas, in MapFrame frame)
     {
         var view = frame.View;
         if (AppState.Store.Theatre is not { } theatre || DcsVectorMap.Features(theatre) is not { } map) return;
         var upd = view.UnitsPerDip;
-        _buckets.Draw(canvas, view, map, cls => cls switch
+        _buckets.Draw(canvas, view, frame.PixelsPerDip, map, cls => cls switch
         {
             "River" when upd <= 1000 => River,
             "Motorway" when upd <= 2500 => Motorway,
@@ -284,14 +288,18 @@ public sealed class MgrsGridSk : MapLayer
     private static readonly float GridWidth = MapStyle.Number("baseMaps.mgrs.width");
     private readonly VectorBuckets _buckets = new();
 
-    public MgrsGridSk() => DcsVectorMap.Loaded += Invalidate;
+    public MgrsGridSk()
+    {
+        DcsVectorMap.Loaded += Invalidate;
+        _buckets.Built += Invalidate;
+    }
 
     public override void Draw(SKCanvas canvas, in MapFrame frame)
     {
         var view = frame.View;
         if (AppState.Store.Theatre is not { } theatre || view.UnitsPerDip > MaxUnitsPerDip) return;
         if (DcsVectorMap.For(theatre, out _) is not { } map) return;
-        _buckets.Draw(canvas, view, map, _ => (GridColor, GridWidth));
+        _buckets.Draw(canvas, view, frame.PixelsPerDip, map, _ => (GridColor, GridWidth));
     }
 }
 
@@ -300,22 +308,105 @@ public sealed class MgrsGridSk : MapLayer
 /// zoomed far in is clipped to the view instead.</summary>
 public sealed class VectorBuckets
 {
-    private readonly Dictionary<object, SKPath> _paths = new(ReferenceEqualityComparer.Instance);
+    /// <summary>Each bucket's path per zoom level (a power of two of metres per DIP): its
+    /// segments joined into lines and simplified to under half a pixel at that level.</summary>
+    private readonly Dictionary<(object Bucket, int Level), SKPath> _paths = new(new LevelKeyComparer());
+
+    private readonly HashSet<(object Bucket, int Level)> _pending = new(new LevelKeyComparer());
+
+    /// <summary>Raised (on a worker thread) when a simplified path is ready: redraw.</summary>
+    public event Action? Built;
+
+    /// <summary>Prepares every bucket's paths for the levels the map is mostly zoomed at (16 to
+    /// 2048 m per DIP), coarse first, on one worker thread: the first zoom through a level would
+    /// otherwise wait for them (a 30 ms frame).</summary>
+    private void Warm(DcsVectorMap map, float pixelsPerDip)
+    {
+        Task.Run(() =>
+        {
+            for (int level = 11; level >= 4; level--)
+            {
+                var tolerance = 0.5f * MathF.Pow(2, level) / Math.Max(pixelsPerDip, 0.5f);
+                foreach (var b in map.Buckets)
+                {
+                    lock (_paths)
+                    {
+                        if (!ReferenceEquals(map, _map)) return;
+                        if (_paths.ContainsKey((b, level)) || !_pending.Add((b, level))) continue;
+                    }
+                    var built = Simplified(b.Segments, tolerance);
+                    lock (_paths)
+                    {
+                        if (!ReferenceEquals(map, _map) || !_pending.Remove((b, level))) { built.Dispose(); return; }
+                        _paths[(b, level)] = built;
+                    }
+                }
+            }
+            Built?.Invoke();
+        });
+    }
+
+    /// <summary>The bucket's path for this zoom level; built on a worker the first time, the
+    /// nearest finished level (or the raw segments) drawn meanwhile.</summary>
+    private SKPath? PathFor(DcsVectorMap.Bucket b, int level, float tolerance)
+    {
+        lock (_paths)
+        {
+            if (_paths.TryGetValue((b, level), out var ready)) return ready;
+            if (_pending.Add((b, level)))
+            {
+                var map = _map;
+                Task.Run(() =>
+                {
+                    var built = Simplified(b.Segments, tolerance);
+                    lock (_paths)
+                    {
+                        if (!ReferenceEquals(map, _map) || !_pending.Remove((b, level))) { built.Dispose(); return; }
+                        _paths[(b, level)] = built;
+                    }
+                    Built?.Invoke();
+                });
+            }
+            for (int d = 1; d < 30; d++)
+            {
+                if (_paths.TryGetValue((b, level - d), out var finer)) return finer;
+                if (_paths.TryGetValue((b, level + d), out var coarser)) return coarser;
+            }
+            // Nothing ready yet: a small bucket is built now; a big one waits a frame or two for
+            // its worker rather than stall the frame.
+            if (_paths.TryGetValue((b, int.MinValue), out var raw)) return raw;
+            if (b.Segments.Length > 20_000) return null;
+            return _paths[(b, int.MinValue)] = Simplified(b.Segments, 0);
+        }
+    }
+
+    private sealed class LevelKeyComparer : IEqualityComparer<(object Bucket, int Level)>
+    {
+        public bool Equals((object Bucket, int Level) a, (object Bucket, int Level) b) => ReferenceEquals(a.Bucket, b.Bucket) && a.Level == b.Level;
+        public int GetHashCode((object Bucket, int Level) k) => HashCode.Combine(System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(k.Bucket), k.Level);
+    }
     private DcsVectorMap? _map;
     private readonly SKPaint _paint = new() { Style = SKPaintStyle.Stroke, IsAntialias = true };
 
     /// <summary><paramref name="style"/>: a bucket class's colour and width (DIPs), or null to skip it.</summary>
-    public void Draw(SKCanvas canvas, MapView view, DcsVectorMap map, Func<string, (SKColor Color, float Width)?> style)
+    public void Draw(SKCanvas canvas, MapView view, float pixelsPerDip, DcsVectorMap map, Func<string, (SKColor Color, float Width)?> style)
     {
         if (!ReferenceEquals(map, _map))
         {
-            foreach (var p in _paths.Values) p.Dispose();
-            _paths.Clear();
+            lock (_paths)
+            {
+                foreach (var p in _paths.Values) p.Dispose();
+                _paths.Clear();
+                _pending.Clear();
+            }
             _map = map;
+            Warm(map, pixelsPerDip);
         }
         var (minX, minY, maxX, maxY) = view.WorldBounds;
         var upd = (float)view.UnitsPerDip;
         var area = SkClip.Area(view);
+        var level = (int)Math.Floor(Math.Log2(Math.Max(upd, 0.01)));
+        var tolerance = 0.5f * MathF.Pow(2, level) / Math.Max(pixelsPerDip, 0.5f);  // metres: under half a pixel
         foreach (var b in map.Buckets)
         {
             if (b.MaxX < minX || b.MinX > maxX || b.MaxY < minY || b.MinY > maxY) continue;
@@ -334,22 +425,14 @@ public sealed class VectorBuckets
                     near.MoveTo(a + new SKPoint(d.X * t0, d.Y * t0));
                     near.LineTo(a + new SKPoint(d.X * t1, d.Y * t1));
                 }
-                canvas.DrawPath(near, Ink.Stroke(color, width));
+                canvas.DrawPath(near, Ink.Stroke(color, SkDraw.IsThin(width, pixelsPerDip) ? 0 : width));
                 continue;
             }
-            if (!_paths.TryGetValue(b, out var path))
-            {
-                path = new SKPath();
-                var s = b.Segments;
-                for (int i = 0; i + 3 < s.Length; i += 4)
-                {
-                    path.MoveTo(s[i], -s[i + 1]);
-                    path.LineTo(s[i + 2], -s[i + 3]);
-                }
-                _paths[b] = path;
-            }
+            if (PathFor(b, level, tolerance) is not { } path) continue;
             _paint.Color = color;
-            _paint.StrokeWidth = width * upd;  // in metres: drawn through the world transform
+            // In metres (drawn through the world transform); a hairline when it would be about a
+            // pixel anyway: a scaled stroke is rebuilt on the GPU at every new zoom scale.
+            _paint.StrokeWidth = SkDraw.IsThin(width, pixelsPerDip) ? 0 : width * upd;
             var (ox, oy) = view.ToScreen(b.OriginX, b.OriginY);
             canvas.Save();
             canvas.Translate((float)ox, (float)oy);
@@ -357,6 +440,72 @@ public sealed class VectorBuckets
             canvas.DrawPath(path, _paint);
             canvas.Restore();
         }
+    }
+
+    /// <summary>Segments (x0, y0, x1, y1 …) joined into lines where one ends where the next
+    /// starts, each simplified (Douglas–Peucker) to <paramref name="tolerance"/> metres; pieces
+    /// smaller than that left out. Thousands of two-point pieces cost the GPU far more than a
+    /// few hundred joined lines (14–30 ms a frame for Syria's roads).</summary>
+    internal static SKPath Simplified(float[] s, float tolerance)
+    {
+        var path = new SKPath();
+        var line = new List<SKPoint>();
+        void Flush()
+        {
+            if (line.Count < 2) { line.Clear(); return; }
+            float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
+            foreach (var p in line) { minX = Math.Min(minX, p.X); maxX = Math.Max(maxX, p.X); minY = Math.Min(minY, p.Y); maxY = Math.Max(maxY, p.Y); }
+            if (maxX - minX < tolerance && maxY - minY < tolerance) { line.Clear(); return; }
+            var keep = new bool[line.Count];
+            keep[0] = keep[^1] = true;
+            var stack = new Stack<(int, int)>();
+            stack.Push((0, line.Count - 1));
+            var tol2 = tolerance * tolerance;
+            while (stack.Count > 0)
+            {
+                var (a, z) = stack.Pop();
+                if (z <= a + 1) continue;
+                var pa = line[a];
+                var d = line[z] - pa;
+                var len2 = d.X * d.X + d.Y * d.Y;
+                int best = -1;
+                float bestD = tol2;
+                for (int i = a + 1; i < z; i++)
+                {
+                    var v = line[i] - pa;
+                    float dist2;
+                    if (len2 < 1e-6f) dist2 = v.X * v.X + v.Y * v.Y;
+                    else
+                    {
+                        var cross = v.X * d.Y - v.Y * d.X;
+                        dist2 = cross * cross / len2;
+                    }
+                    if (dist2 > bestD) { bestD = dist2; best = i; }
+                }
+                if (best < 0) continue;
+                keep[best] = true;
+                stack.Push((a, best));
+                stack.Push((best, z));
+            }
+            path.MoveTo(line[0]);
+            for (int i = 1; i < line.Count; i++)
+                if (keep[i]) path.LineTo(line[i]);
+            line.Clear();
+        }
+        for (int i = 0; i + 3 < s.Length; i += 4)
+        {
+            SKPoint a = new(s[i], -s[i + 1]), b = new(s[i + 2], -s[i + 3]);
+            if (line.Count > 0 && Math.Abs(line[^1].X - a.X) < 0.01f && Math.Abs(line[^1].Y - a.Y) < 0.01f)
+                line.Add(b);
+            else
+            {
+                Flush();
+                line.Add(a);
+                line.Add(b);
+            }
+        }
+        Flush();
+        return path;
     }
 }
 

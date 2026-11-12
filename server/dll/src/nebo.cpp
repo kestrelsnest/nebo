@@ -12,7 +12,7 @@
 
 namespace {
 
-constexpr char kVersion[] = "0.16.0";  //0.3: controller commands; 0.4: coalition channels (LSO feed); 0.5: analytics ids; 0.6: F10 mark commands; 0.7: carrier lights; 0.8: identify, shared threats, nctr; 0.9: controllers do not fly; 0.10: login 2 (Discord, password proof, side choice); 0.11: no rwr channel; 0.12: pilot sync (dtc_request); 0.13: pushed cartridges (dtc_push); 0.14: one pushed cartridge per player and aircraft type; 0.14.1: AEGIS 4 s scan; 0.14.2: client only; 0.14.3: pilot hook, several servers; 0.15: pilot designations (designation on dtc_request, designations channel); 0.15.1: nebo.clients() (idle picture rate); 0.15.2: hook only (launch marks); 0.16: camera login (camera_password, camera channels, camera_set_focus)
+constexpr char kVersion[] = "0.17.0";  //0.3: controller commands; 0.4: coalition channels (LSO feed); 0.5: analytics ids; 0.6: F10 mark commands; 0.7: carrier lights; 0.8: identify, shared threats, nctr; 0.9: controllers do not fly; 0.10: login 2 (Discord, password proof, side choice); 0.11: no rwr channel; 0.12: pilot sync (dtc_request); 0.13: pushed cartridges (dtc_push); 0.14: one pushed cartridge per player and aircraft type; 0.14.1: AEGIS 4 s scan; 0.14.2: client only; 0.14.3: pilot hook, several servers; 0.15: pilot designations (designation on dtc_request, designations channel); 0.15.1: nebo.clients() (idle picture rate); 0.15.2: hook only (launch marks); 0.16: camera login (camera_password, camera channels, camera_set_focus); 0.17: controllers, flights, claim/handoff, callsign, owner colour, area_set (f10: areas on the pilots' F10 map), message_side, chat channel
 nebo::NetServer g_server;
 nebo::TerrainGrid g_terrain;
 
@@ -199,6 +199,45 @@ int l_commands(lua_State* L) {
         lua_setfield(L, -2, "units");
         lua_pushlstring(L, c.blob.data(), c.blob.size());           // dtc_push cartridge
         lua_setfield(L, -2, "cartridge");
+        lua_pushlstring(L, c.position.data(), c.position.size());   // controller_info
+        lua_setfield(L, -2, "position");
+        lua_pushlstring(L, c.color.data(), c.color.size());      // controller_info
+        lua_setfield(L, -2, "color");
+        lua_pushlstring(L, c.area.data(), c.area.size());        // area_set
+        lua_setfield(L, -2, "area");
+        lua_pushlstring(L, c.f10.data(), c.f10.size());          // area_set
+        lua_setfield(L, -2, "f10");
+        lua_pushlstring(L, c.audience.data(), c.audience.size());  // message_side
+        lua_setfield(L, -2, "audience");
+        lua_pushinteger(L, static_cast<lua_Integer>(c.khz));        // controller_info, handoff
+        lua_setfield(L, -2, "khz");
+        lua_pushinteger(L, static_cast<lua_Integer>(c.to));         // handoff
+        lua_setfield(L, -2, "to");
+        lua_pushinteger(L, static_cast<lua_Integer>(c.handoff));    // handoff_answer
+        lua_setfield(L, -2, "handoff");
+        lua_pushboolean(L, c.accept ? 1 : 0);                       // handoff_answer
+        lua_setfield(L, -2, "accept");
+        lua_rawseti(L, -2, static_cast<int>(i + 1));
+    }
+    return 1;
+}
+
+// nebo.controllers() -> { {client=, coalition="blue"|"red", user=, callsign=}, ... }: the
+// logged-in controllers (not cameras), as of the network thread's last loop.
+int l_controllers(lua_State* L) {
+    auto list = g_server.controllerList();
+    lua_createtable(L, static_cast<int>(list.size()), 0);
+    for (size_t i = 0; i < list.size(); ++i) {
+        const auto& c = list[i];
+        lua_createtable(L, 0, 4);
+        lua_pushinteger(L, static_cast<lua_Integer>(c.client));
+        lua_setfield(L, -2, "client");
+        lua_pushstring(L, c.coalition == nebo::Blue ? "blue" : "red");
+        lua_setfield(L, -2, "coalition");
+        lua_pushlstring(L, c.user.data(), c.user.size());
+        lua_setfield(L, -2, "user");
+        lua_pushlstring(L, c.callsign.data(), c.callsign.size());
+        lua_setfield(L, -2, "callsign");
         lua_rawseti(L, -2, static_cast<int>(i + 1));
     }
     return 1;
@@ -428,6 +467,7 @@ const luaL_Reg kFunctions[] = {
     {"clear_pushed", l_clear_pushed},
     {"designations", l_designations},
     {"clients", l_clients},
+    {"controllers", l_controllers},
     {"set_pilots", l_set_pilots},
     {"set_cockpits", l_set_cockpits},
     {"set_camera", l_set_camera},

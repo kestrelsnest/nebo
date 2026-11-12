@@ -139,8 +139,8 @@ public static class DeckLink
             {
                 ["ch"] = ch,
                 ["mhz"] = SrsChannels.Mhz(ch),
-                ["role"] = package > 0 ? $"P{package}" : ch == ChannelPlan.Atc ? "ATC" : SrsChannels.RadioName(ch) ?? "",
-                ["color"] = package > 0 ? Hex(PackageColors.Sk(package)) : ch == ChannelPlan.Atc ? "#4CB864" : null,
+                ["role"] = package > 0 ? $"P{package}" : ChannelPlan.IsAtc(ch) ? "ATC" : SrsChannels.RadioName(ch) ?? "",
+                ["color"] = package > 0 ? Hex(PackageColors.Sk(package)) : ChannelPlan.IsAtc(ch) ? "#4CB864" : null,
                 ["selected"] = SrsChannels.Transmitting == ch,
                 ["sending"] = SrsChannels.SendingNow == ch,
             });

@@ -16,8 +16,8 @@ public class PackageTests
     [Fact]
     public void Channel_plan()
     {
-        Assert.Equal([1, 2, 3, 4, 5], ChannelPlan.Free);
-        Assert.Equal(["", "", "", "", "", "ATC", "P1", "P2", "P3", "P4"], Enumerable.Range(1, 10).Select(ChannelPlan.Role));
+        Assert.Equal([1, 2, 3], ChannelPlan.Free);
+        Assert.Equal(["", "", "", "ATC", "ATC", "ATC", "P1", "P2", "P3", "P4"], Enumerable.Range(1, 10).Select(ChannelPlan.Role));
         Assert.Equal(3, ChannelPlan.PackageOf(9));
         Assert.Equal(0, ChannelPlan.PackageOf(6));
     }

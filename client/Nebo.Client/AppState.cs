@@ -18,6 +18,9 @@ public static class AppState
     /// settings, members for the session (they drop out when the aircraft is gone).</summary>
     public static PackageBook Packages { get; } = new();
 
+    /// <summary>The side's controllers, player aircraft and handoffs (DLL 0.17).</summary>
+    public static FlightBoard Flights { get; } = new();
+
     /// <summary>RWR bearing lines, placed threats and the coalition's F10 marks (every map).</summary>
     public static GciBoard Board { get; } = new();
 

@@ -38,6 +38,7 @@ public partial class SettingsWindow : Window
         AutoEamBox.IsChecked = AppState.Settings.Srs.AutoEam;
         ShowDcsPath();
         UpdatesBox.IsChecked = AppState.Settings.CheckForUpdates;
+        (AppState.Settings.MapFrames switch { "hover" => FramesHover, "always" => FramesAlways, _ => FramesChange }).IsChecked = true;
         HoverNmBox.Text = AppState.Settings.LabelHoverNm.ToString("0.#", CultureInfo.InvariantCulture);
         _loading = false;
         _status.Tick += (_, _) => SrsStatusText.Text = SrsStatus.Lines();
@@ -73,6 +74,13 @@ public partial class SettingsWindow : Window
 
     private void AlarmSound_Click(object sender, RoutedEventArgs e) => AppState.Settings.LaunchAlarm.Sound = AlarmSound.IsChecked == true;
     private void Updates_Click(object sender, RoutedEventArgs e) => AppState.Settings.CheckForUpdates = UpdatesBox.IsChecked == true;
+
+    private void MapFrames_Checked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string mode } || AppState.Settings.MapFrames == mode) return;
+        AppState.Settings.MapFrames = mode;
+        Map.Gpu.MapSurface.OnFrameModeChanged();
+    }
 
     private void AlarmVolume_Checked(object sender, RoutedEventArgs e)
     {

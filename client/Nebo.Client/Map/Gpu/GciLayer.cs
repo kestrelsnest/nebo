@@ -99,12 +99,18 @@ public sealed class GciSk : MapLayer
     }
 
     /// <summary>A Foothold zone's own name label (Foothold puts one mark on every zone).</summary>
+    /// <summary>Controllers' areas drawn on the pilots' F10 map (area_set f10) take DCS ids from
+    /// 890000 up (collector.lua NEBO_areaDrawn); DCS lists their labelled shapes as marks.</summary>
+    private const long AreaDrawingFirstId = 890000, AreaDrawingLastId = 989999;
+
     private static bool IsZoneLabel(F10Mark m)
     {
+        if (m.Id is >= AreaDrawingFirstId and <= AreaDrawingLastId) return true;
         if (AppState.Store.Foothold is not { } state) return false;
         foreach (var z in state.Zones)
         {
-            var r = Math.Max(z.Radius, 3000);
+            // Foothold puts its zone labels exactly on the zone circle's edge: allow some margin.
+            var r = Math.Max(z.Radius * 1.15 + 500, 3000);
             if ((z.X - m.X) * (z.X - m.X) + (z.Z - m.Z) * (z.Z - m.Z) < r * r && m.Text.Contains(z.Name, StringComparison.OrdinalIgnoreCase))
                 return true;
         }

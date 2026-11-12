@@ -18,10 +18,21 @@ public sealed class ConnectionManager(PictureStore store, Dispatcher dispatcher)
     public bool IsConnected => _session is not null;
     public string Status { get; private set; } = "Not connected";
     public event Action? StatusChanged;
+    /// <summary>Raised on the UI thread once a login succeeded (the controller's info goes out then).</summary>
+    public event Action? Connected;
+    /// <summary>The callsign this login gave (announced to pilots by DLL 0.17).</summary>
+    public string? Callsign { get; private set; }
+    /// <summary>The colour this controller's jets are marked in ("#rrggbb").</summary>
+    public string? Color { get; private set; }
+    /// <summary>The saved server this connection was made from (keeps the area of operations).</summary>
+    public ServerProfile? Profile { get; private set; }
 
-    public async Task ConnectAsync(string host, int port, LoginOptions login)
+    public async Task ConnectAsync(string host, int port, LoginOptions login, ServerProfile? profile = null)
     {
         Disconnect();
+        Callsign = string.IsNullOrWhiteSpace(login.Callsign) ? null : login.Callsign.Trim();
+        Color = OwnerColors.Parse(login.Color) is null ? null : login.Color;
+        Profile = profile;
         var session = _session = new CancellationTokenSource();
         SetStatus($"Connecting to {host}:{port}…");
         try
@@ -30,6 +41,7 @@ public sealed class ConnectionManager(PictureStore store, Dispatcher dispatcher)
             await using var conn = await NeboConnection.ConnectAsync(host, port, withProgress, session.Token);
             _connection = conn;
             SetStatus($"Connected to {host}:{port} as {conn.Coalition}{(conn.User is { } u ? $" ({u})" : "")}");
+            _ = dispatcher.BeginInvoke(() => Connected?.Invoke());
             string? closed = null;
             await foreach (var message in conn.ReadMessagesAsync(session.Token))
             {
@@ -89,6 +101,15 @@ public sealed class ConnectionManager(PictureStore store, Dispatcher dispatcher)
                             AppState.Board.ToLatLon ??= (x, z) => AppState.Store.Theatre?.ToLatLon(x, z);
                             AppState.Board.ApplyShared(threats.Threats);
                         });
+                        break;
+                    case ControllersMessage controllers:
+                        await dispatcher.InvokeAsync(() => AppState.Flights.ApplyControllers(controllers));
+                        break;
+                    case FlightsMessage flights:
+                        await dispatcher.InvokeAsync(() => AppState.Flights.ApplyFlights(flights));
+                        break;
+                    case ChatMessage chat:
+                        await dispatcher.InvokeAsync(() => ChatDesk.Apply(chat));
                         break;
                     case MarksMessage marks:
                         await dispatcher.InvokeAsync(() => AppState.Board.ApplyMarks(marks.Marks, DateTime.UtcNow));
@@ -167,6 +188,8 @@ public sealed class ConnectionManager(PictureStore store, Dispatcher dispatcher)
         _connection = null;
         store.Clear();
         AppState.Board.ClearMarks();  // the next connection resends them
+        AppState.Flights.Clear();
+        ChatDesk.Clear();
     }
 
     private void SetStatus(string status)

@@ -42,6 +42,9 @@ public sealed class SymbolsSk : MapLayer
     public float LandedOpacity { get; set; } = 1;
     public float RingsOpacity { get; set; } = 1;
 
+    /// <summary>Which controllers' jets get their owner's coloured ring (the map's owner filter).</summary>
+    public OwnerView Owners { get; set; } = OwnerView.All;
+
     /// <summary>This map follows AppState.PlayersOnly (GCI maps).</summary>
     public bool PlayersOnlyApplies { get; set; }
 
@@ -111,6 +114,10 @@ public sealed class SymbolsSk : MapLayer
             // Package members in their package's colour, the tag ("P1") left of the symbol.
             var package = identity == Identity.Friendly ? AppState.Packages.PackageOf(u.Id) : null;
             var ink = Ink.WithOpacity(package is null ? SkPalette.For(identity) : PackageColors.Sk(package.Number), fresh);
+            // A pilot a controller has: drawn in that controller's colour; while a handoff of him
+            // waits for an answer it blinks with white.
+            if (identity == Identity.Friendly && FlightDesk.OwnerColor(u.Id, Owners) is { } oc)
+                ink = Ink.WithOpacity(FlightDesk.HandoffBlinkOff(u.Id) ? SKColors.White : new SKColor(oc.R, oc.G, oc.B), fresh);
             var halo = Ink.WithOpacity(Halo, fresh);
             var pen = Ink.Stroke(ink, SymbolWidth);
             switch (kind)

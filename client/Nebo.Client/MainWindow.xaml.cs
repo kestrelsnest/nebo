@@ -336,7 +336,7 @@ public partial class MainWindow : Window
                 var side = await SidePickWindow.AskAsync(this, sides, user, server.LastSide);
                 if (side is not null) server.LastSide = side;
                 return side;
-            }));
+            }, Callsign: server.Callsign, Color: server.Color), server);
     }
 
     private void Disconnect_Click(object sender, RoutedEventArgs e) => AppState.Connection.Disconnect();
@@ -385,6 +385,7 @@ public partial class MainWindow : Window
     private void ShowAtc_Click(object sender, RoutedEventArgs e) => Current.ShowAnchorable(WorkspaceView.AtcId, "ATC");
     private void ShowPackages_Click(object sender, RoutedEventArgs e) => Current.ShowAnchorable(WorkspaceView.PackagesId, "Packages");
     private void ShowEngagements_Click(object sender, RoutedEventArgs e) => Current.ShowAnchorable(WorkspaceView.EngagementsId, "Engagements");
+    private void ShowChat_Click(object sender, RoutedEventArgs e) => Current.ShowAnchorable(WorkspaceView.ChatId, "Chat");
 
     private void ShowAtcView_Click(object sender, RoutedEventArgs e)
     {

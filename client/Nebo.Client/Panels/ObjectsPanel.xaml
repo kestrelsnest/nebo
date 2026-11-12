@@ -59,6 +59,17 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Ctl" SortMemberPath="Owner">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" ToolTip="The controller who has this pilot (right-click: Take, Hand off, Release)">
+                                <Border Width="9" Height="9" CornerRadius="5" Background="{Binding OwnerBrush}" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Owner}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Flight" Binding="{Binding Flight}"/>
                 <DataGridTextColumn Header="ID" Binding="{Binding IdentityText}"/>
                 <DataGridTextColumn Header="Kind" Binding="{Binding Kind}"/>
                 <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>

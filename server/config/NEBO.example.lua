@@ -62,6 +62,14 @@ camera_password = ""
 camera_interval = 1
 camera_focus_hz = 20
 
+-- Controllers on station: when a controller logs in with a callsign, the side's pilots see
+-- "NEBO: Overlord (GCI) on station, 251.000" for 15 s (and "off station" when they leave).
+announce_controllers = true
+
+-- Chat: players' chat (all chat, and side chat for that side's controllers) appears in NEBO's
+-- Chat panel next to the mission's announcements and players joining. false: chat stays out.
+relay_chat = true
+
 -- Pilot sync (data cartridges): controllers push cartridges (F/A-18C, F-16C, F-14B(U)) from the
 -- client's DTC tab to pilots with the NEBO DTC hook (NEBO-DTC.lua in their Saved
 -- Games\DCS\Scripts\Hooks, your server's address set in it). Nothing is written until a push; a

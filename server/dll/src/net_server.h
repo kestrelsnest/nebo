@@ -32,8 +32,25 @@ struct Command {
     std::string threat;         // threat type name, e.g. "SA-6" (mark_add, may be empty)
     int64_t mark = 0;           // F10 mark id (mark_remove), shared threat id (threat_remove)
     int mode = 0;               // carrier lighting mode, -2 off .. 2 recovery (carrier_lights)
-    std::vector<std::string> units;  // dtc_push: recipient unit ids (slot ids)
+    std::vector<std::string> units;  // dtc_push: recipient unit ids (slot ids); claim, release, handoff: unit ids
     std::string blob;           // dtc_push: the cartridge, one raw JSON object
+    std::string position;       // controller_info: "gci", "atc:<airfield id>" or ""
+    std::string color;          // controller_info: "#rrggbb" (the owner colour) or ""
+    std::string area;           // area_set: areas split by '|', each "lat,lon;lat,lon;..." (3-40 points), or ""
+    std::string f10;            // area_set: one '0'/'1' per area: shown to the side's pilots on the F10 map
+    std::string audience;       // message_side: "side" (the controller's coalition) or "all"
+    int64_t khz = 0;            // controller_info, handoff: a frequency in kHz (0: none)
+    int64_t to = 0;             // handoff: the receiving controller's id (connection serial)
+    int64_t handoff = 0;        // handoff_answer: the handoff's id
+    bool accept = false;        // handoff_answer
+};
+
+// A logged-in controller (not a camera), for the hook's controllers channel.
+struct ControllerEntry {
+    uint64_t client = 0;        // connection serial: the controller's id for commands
+    Coalition coalition = Blue;
+    std::string user;           // Discord name, or ""
+    std::string callsign;       // given at login ("side" step) or by controller_info, or ""
 };
 
 // A player on a side (pilot sync): side, DCS player id (the same on the server and every client)
@@ -109,8 +126,12 @@ public:
     // while another joins). Updated by the network thread every loop.
     int controllers(Coalition c) const { return authed_[c].load(); }
     uint64_t logins(Coalition c) const { return logins_[c].load(); }
+    // The logged-in controllers, as of the network thread's last loop.
+    std::vector<ControllerEntry> controllerList();
 
 private:
+    std::mutex controllersMutex_;
+    std::vector<ControllerEntry> controllerList_;  // under controllersMutex_
     void run();
     void log(std::string line);
 

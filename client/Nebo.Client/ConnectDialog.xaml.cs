@@ -16,10 +16,12 @@ public partial class ConnectDialog : Window
     private static AppSettings Settings => AppState.Settings;
     private ServerProfile? _selected;
     private bool _filling;
+    private string _color = Core.OwnerColors.Choices[0];
 
     public ConnectDialog()
     {
         InitializeComponent();
+        BuildColors();
         MigrateOldLogin();
         Refresh(Settings.Servers.FirstOrDefault(s => s.Name == Settings.LastServer) ?? Settings.Servers.FirstOrDefault());
         Loaded += (_, _) => (_selected is null ? HostBox : (UIElement)ServerList).Focus();
@@ -66,6 +68,9 @@ public partial class ConnectDialog : Window
         SrsPortBox.Text = (p?.SrsPort ?? Core.SrsListener.DefaultPort).ToString();
         PasswordBox.Password = "";
         EamBox.Password = "";
+        // A new server starts with the callsign last used anywhere.
+        CallsignBox.Text = p?.Callsign ?? Settings.Servers.Select(s => s.Callsign).LastOrDefault(c => !string.IsNullOrEmpty(c)) ?? "";
+        PickColor(p?.Color ?? Settings.Servers.Select(s => s.Color).LastOrDefault(c => Core.OwnerColors.Parse(c) is not null) ?? Core.OwnerColors.Choices[0]);
         DeleteButton.IsEnabled = p is not null;
         UpdateHints();
         ErrorText.Text = "";
@@ -111,6 +116,9 @@ public partial class ConnectDialog : Window
         if (host.Length == 0) { ErrorText.Text = "Enter the server's address"; return; }
         if (!int.TryParse(PortBox.Text, out var port) || port is < 1 or > 65535) { ErrorText.Text = "Port must be 1–65535"; return; }
         if (!int.TryParse(SrsPortBox.Text, out var srsPort) || srsPort is < 1 or > 65535) { ErrorText.Text = "SRS port must be 1–65535"; return; }
+        var callsign = CallsignBox.Text.Trim();
+        if (callsign.Length == 0) { ErrorText.Text = "Enter your callsign (pilots see it)"; return; }
+        if (!Core.Callsigns.IsValid(callsign)) { ErrorText.Text = "Callsign: letters, digits, space - / . ' : only"; return; }
         var name = NameBox.Text.Trim();
 
         // A named server is saved (a new name adds one); unnamed ones connect without saving.
@@ -129,6 +137,8 @@ public partial class ConnectDialog : Window
         p.Host = host;
         p.Port = port;
         p.SrsPort = srsPort;
+        p.Callsign = callsign;
+        p.Color = _color;
         if (PasswordBox.Password.Length > 0) p.Password = PasswordBox.Password;
         if (EamBox.Password.Length > 0) p.EamPassword = EamBox.Password;
         if (name.Length > 0)
@@ -138,6 +148,29 @@ public partial class ConnectDialog : Window
         }
         Server = p;
         DialogResult = true;
+    }
+
+    /// <summary>The owner colours as swatches; the picked one has a thick outline.</summary>
+    private void BuildColors()
+    {
+        foreach (var hex in Core.OwnerColors.Choices)
+        {
+            var (r, g, b) = Core.OwnerColors.Parse(hex)!.Value;
+            var swatch = new Border
+            {
+                Width = 20, Height = 20, Margin = new Thickness(0, 0, 4, 0), CornerRadius = new CornerRadius(3), Cursor = Cursors.Hand,
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(r, g, b)),
+                BorderBrush = System.Windows.SystemColors.WindowTextBrush, Tag = hex,
+            };
+            swatch.MouseLeftButtonDown += (_, _) => PickColor(hex);
+            ColorPanel.Children.Add(swatch);
+        }
+    }
+
+    private void PickColor(string hex)
+    {
+        _color = Core.OwnerColors.Choices.FirstOrDefault(c => string.Equals(c, hex, StringComparison.OrdinalIgnoreCase)) ?? Core.OwnerColors.Choices[0];
+        foreach (Border s in ColorPanel.Children) s.BorderThickness = new Thickness((string)s.Tag == _color ? 3 : 0);
     }
 
     private static void SaveSettings()

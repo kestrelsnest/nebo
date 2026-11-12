@@ -58,7 +58,8 @@ struct Client {
     std::deque<std::chrono::steady_clock::time_point> recentCommands;
     std::string nonce;                  // login 2 challenge
     std::string user, userId, token;    // Discord name, id, access token (role re-checks)
-    int sides = 0;                      // sides it may pick: 1 blue, 2 red
+    std::string callsign;               // the controller's callsign (side step, controller_info)
+    int sides = 0;                     // sides it may pick: 1 blue, 2 red
     std::chrono::steady_clock::time_point nextRoleCheck;
     bool roleCheckBusy = false;
     bool discordDown = false;           // logged once while Discord fails
@@ -366,9 +367,89 @@ bool extractJsonObject(const std::string& json, const char* key, std::string& va
     return false;
 }
 
+// A short name a person reads (callsign, package name, position): at most 24 bytes of letters,
+// digits, spaces and - / . ' :, or UTF-8 letters (bytes over 0x7F).
+bool shortName(const std::string& s) {
+    if (s.size() > 24) return false;
+    for (char ch : s) {
+        auto u = static_cast<unsigned char>(ch);
+        if (u < 0x80 && !std::isalnum(u) && ch != ' ' && ch != '-' && ch != '/' && ch != '.' && ch != '\'' && ch != ':') return false;
+    }
+    return true;
+}
+
+bool extractJsonBool(const std::string& json, const char* key, bool& value) {
+    size_t p = valueOf(json, key);
+    if (p >= json.size()) return false;
+    if (json.compare(p, 4, "true") == 0) value = true;
+    else if (json.compare(p, 5, "false") == 0) value = false;
+    else return false;
+    return true;
+}
+
+// claim, release, handoff: the DCS unit ids of own aircraft (strings of digits), 1 to 50.
+std::string parseUnitList(const std::string& line, Command& cmd) {
+    if (!extractJsonStringArray(line, "units", cmd.units) || cmd.units.empty()) return "units: DCS unit ids";
+    if (cmd.units.size() > kMaxPushUnits) return "at most 50 units";
+    for (const auto& u : cmd.units)
+        if (u.empty() || u.size() > 15 || u.find_first_not_of("0123456789") != std::string::npos) return "units: DCS unit ids";
+    return {};
+}
+
 std::string parseCommand(const std::string& line, Command& cmd) {
     if (!extractJsonInteger(line, "id", cmd.id)) return "missing id";
     if (!extractJsonString(line, "name", cmd.name)) return "missing name";
+    if (cmd.name == "controller_info") {
+        // What the controller works and on which frequency; a new callsign (optional).
+        extractJsonString(line, "callsign", cmd.text);
+        if (!shortName(cmd.text)) return "callsign: at most 24 letters, digits, spaces";
+        if (!extractJsonString(line, "position", cmd.position)) cmd.position.clear();
+        if (!shortName(cmd.position)) return "position: gci or atc:<airfield id>";
+        if (!extractJsonString(line, "color", cmd.color)) cmd.color.clear();
+        if (!cmd.color.empty() && (cmd.color.size() != 7 || cmd.color[0] != '#'
+                || cmd.color.find_first_not_of("0123456789abcdefABCDEF", 1) != std::string::npos)) return "color: #rrggbb";
+        if (!extractJsonInteger(line, "khz", cmd.khz)) cmd.khz = 0;
+        if (cmd.khz < 0 || cmd.khz > 400000) return "khz: 0 to 400000";
+        return {};
+    }
+    if (cmd.name == "area_set") {
+        // The controller's areas of operations: up to 10, split by '|', each lat,lon pairs split
+        // by ';' (3 to 40 corners); empty clears them.
+        if (!extractJsonString(line, "area", cmd.area)) return "area: lat,lon;lat,lon;...";
+        if (cmd.area.size() > 12000) return "area: too long";
+        if (cmd.area.find_first_not_of("0123456789.,;-|") != std::string::npos) return "area: lat,lon;lat,lon;...";
+        if (!cmd.area.empty()) {
+            size_t areas = 1, points = 1;
+            for (char ch : cmd.area + "|") {
+                if (ch == ';') ++points;
+                else if (ch == '|') {
+                    if (points < 3 || points > 40) return "area: 3 to 40 corners each";
+                    points = 1;
+                }
+            }
+            for (char ch : cmd.area) if (ch == '|') ++areas;
+            if (areas > 10) return "area: at most 10 areas";
+        }
+        // Optional: which areas the side's pilots see on their F10 map, one '0'/'1' per area.
+        if (!extractJsonString(line, "f10", cmd.f10)) cmd.f10.clear();
+        if (cmd.f10.size() > 10 || cmd.f10.find_first_not_of("01") != std::string::npos) return "f10: one 0 or 1 per area";
+        return {};
+    }
+    if (cmd.name == "claim" || cmd.name == "release") return parseUnitList(line, cmd);
+    if (cmd.name == "handoff") {
+        if (auto e = parseUnitList(line, cmd); !e.empty()) return e;
+        if (!extractJsonInteger(line, "to", cmd.to) || cmd.to <= 0) return "to: a controller id";
+        extractJsonString(line, "package", cmd.text);  // optional: the package's name
+        if (!shortName(cmd.text)) return "package: at most 24 letters, digits, spaces";
+        if (!extractJsonInteger(line, "khz", cmd.khz)) cmd.khz = 0;
+        if (cmd.khz < 0 || cmd.khz > 400000) return "khz: 0 to 400000";
+        return {};
+    }
+    if (cmd.name == "handoff_answer") {
+        if (!extractJsonInteger(line, "handoff", cmd.handoff) || cmd.handoff <= 0) return "handoff: a handoff id";
+        if (!extractJsonBool(line, "accept", cmd.accept)) return "accept: true or false";
+        return {};
+    }
     if (cmd.name == "dtc_push") {
         // Recipients first and the cartridge last in the line: the cartridge has keys of its own.
         if (!extractJsonStringArray(line, "units", cmd.units) || cmd.units.empty()) return "units: the recipients' DCS player ids";
@@ -390,6 +471,21 @@ std::string parseCommand(const std::string& line, Command& cmd) {
         }
         if (!extractJsonInteger(line, "seconds", seconds) || seconds < 5 || seconds > 120) return "seconds: 5 to 120";
         cmd.seconds = static_cast<int>(seconds);
+        return {};
+    }
+    if (cmd.name == "message_side") {
+        // An on-screen text for every pilot of the controller's side, or for everyone.
+        int64_t seconds = 0;
+        if (!extractJsonString(line, "text", cmd.text) || cmd.text.empty()) return "text missing";
+        if (cmd.text.size() > kMaxTextBytes) return "text longer than 1500 bytes";
+        for (char& ch : cmd.text) {
+            if (ch == '\r' || ch == '\t') ch = ' ';
+            else if (static_cast<unsigned char>(ch) < 0x20 && ch != '\n') return "text has control characters";
+        }
+        if (!extractJsonInteger(line, "seconds", seconds) || seconds < 5 || seconds > 120) return "seconds: 5 to 120";
+        cmd.seconds = static_cast<int>(seconds);
+        if (!extractJsonString(line, "audience", cmd.audience)) cmd.audience = "side";
+        if (cmd.audience != "side" && cmd.audience != "all") return "audience: side or all";
         return {};
     }
     if (cmd.name == "mark_add") {
@@ -1039,6 +1135,9 @@ void NetServer::run() {
                         cl.state = ClientState::Closing;
                     } else {
                         cl.coalition = static_cast<Coalition>(c);
+                        // The controller's callsign (DLL 0.17, optional): announced to the side's pilots.
+                        std::string callsign;
+                        if (extractJsonString(authLine, "callsign", callsign) && shortName(callsign)) cl.callsign = callsign;
                         cl.out += std::string("{\"type\":\"side_ok\",\"coalition\":\"") + kCoalitionNames[c] + "\"}\n";
                         cl.state = ClientState::Authed;
                         ++logins_[c];
@@ -1129,6 +1228,7 @@ void NetServer::run() {
                         for (auto t : cl.recentCommands) if (now - t < std::chrono::seconds(1)) ++lastSecond;
                         if (lastSecond >= kBurst || static_cast<int>(cl.recentCommands.size()) >= kPerMinute) refused = "too many commands, wait a moment";
                     }
+                    if (refused.empty() && cmd.name == "controller_info" && !cmd.text.empty()) cl.callsign = cmd.text;
                     if (refused.empty()) {
                         cmd.client = cl.serial;
                         cmd.coalition = cl.coalition;
@@ -1171,10 +1271,12 @@ void NetServer::run() {
         int authed[CoalitionCount] = {};
         int cameras = 0, focusHz = 0;
         std::vector<int64_t> focusIds;
+        std::vector<ControllerEntry> controllerList;
         for (const auto& cl : clients) {
             if (cl.state != ClientState::Authed) continue;
             if (!cl.camera) {
                 ++authed[cl.coalition];
+                controllerList.push_back({cl.serial, cl.coalition, cl.user, cl.callsign});
                 continue;
             }
             ++cameras;
@@ -1183,6 +1285,10 @@ void NetServer::run() {
             if (!cl.focus.empty()) focusHz = std::max(focusHz, cl.focusHz);
         }
         for (int c = 0; c < CoalitionCount; ++c) authed_[c] = authed[c];
+        {
+            std::lock_guard lock(controllersMutex_);
+            controllerList_ = std::move(controllerList);
+        }
         cameras_ = cameras;
         {
             std::string csv;
@@ -1195,7 +1301,16 @@ void NetServer::run() {
 
     for (auto& cl : clients) closesocket(cl.socket);
     for (auto& a : authed_) a = 0;
+    {
+        std::lock_guard lock(controllersMutex_);
+        controllerList_.clear();
+    }
     cameras_ = 0;
+}
+
+std::vector<ControllerEntry> NetServer::controllerList() {
+    std::lock_guard lock(controllersMutex_);
+    return controllerList_;
 }
 
 }  // namespace nebo

@@ -9,6 +9,12 @@ namespace Nebo.Client.Map.Gpu;
 /// <summary>Skia images from the existing decoders, and drawing in DCS map coordinates.</summary>
 public static class SkDraw
 {
+    /// <summary>A line about a device pixel wide (at most 1.6 px): drawn as a hairline, which the
+    /// GPU draws directly, instead of a stroke it must outline again at every zoom scale.</summary>
+    public static bool IsThin(float widthDip, float pixelsPerDip) => widthDip * pixelsPerDip <= 1.6f;
+
+    public static Ink.Pen Hairline(Ink.Pen pen, float pixelsPerDip) => IsThin(pen.Width, pixelsPerDip) ? pen with { Width = 0 } : pen;
+
     /// <summary>Draws something faded to an opacity (one translucent pass, so overlaps do not
     /// darken); at full opacity, drawn as is.</summary>
     public static void Faded(SKCanvas canvas, float opacity, Action draw)

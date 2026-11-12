@@ -36,6 +36,17 @@
                             <TextBlock Text="NM of the mouse" VerticalAlignment="Center"/>
                         </StackPanel>
                     </GroupBox>
+                    <GroupBox Header="Map frame rate" Padding="6" Margin="0,8,0,0">
+                        <StackPanel>
+                            <RadioButton x:Name="FramesChange" GroupName="MapFrames" Tag="change" Checked="MapFrames_Checked"
+                                         Content="Draw when something changes (least GPU)"/>
+                            <RadioButton x:Name="FramesHover" GroupName="MapFrames" Tag="hover" Checked="MapFrames_Checked"
+                                         Content="Full frame rate while the mouse is on a map"
+                                         ToolTip="The map keeps drawing while the pointer is on it, so a zoom or drag starts without a late first frame"/>
+                            <RadioButton x:Name="FramesAlways" GroupName="MapFrames" Tag="always" Checked="MapFrames_Checked"
+                                         Content="Full frame rate always (most GPU, more with several maps)"/>
+                        </StackPanel>
+                    </GroupBox>
                     <GroupBox Header="Updates" Padding="6" Margin="0,8,0,0">
                         <CheckBox x:Name="UpdatesBox" Content="Tell me when a new NEBO version is out (asks GitHub once a day)" Click="Updates_Click"/>
                     </GroupBox>

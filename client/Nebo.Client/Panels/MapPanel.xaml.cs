@@ -45,6 +45,9 @@ public partial class MapPanel : UserControl
     private readonly SymbolsSk _symbols = new();
     private readonly MeasureSk _measure = new();
     private readonly DtcSk _dtc = new();
+    private readonly AreasSk _areas = new();
+    /// <summary>A right press finished an area: its release opens no menu.</summary>
+    private bool _swallowRightUp;
     // DTC points being dragged: where the press was and where each selected one started.
     private (bool Gps, (double X, double Z) Start, Dictionary<int, (double X, double Z)> From)? _dtcDrag;
     private ((double X, double Z) Start, Dictionary<Dtc.SaRef, (double X, double Z)> From)? _dtcSaDrag;
@@ -64,7 +67,7 @@ public partial class MapPanel : UserControl
         DiagramsBox.Visibility = airfieldView ? Visibility.Visible : Visibility.Collapsed;
 
         foreach (var layer in new MapLayer[] { _scopeRelief, _scopeFeatures, _scope, _esri, _dcsMap, _mgrs, _charts, _satellite,
-                     _dim, _theatre, _airfields, _foothold, _srsCoverage, _gci, _symbols, _dtc, _measure })
+                     _dim, _theatre, _airfields, _foothold, _areas, _srsCoverage, _gci, _symbols, _dtc, _measure })
             Surface.Add(layer);
         _gci.ShowMarks = _settings.ShowMarks;
         _gci.ShowDesignations = _settings.ShowDesignations;
@@ -76,6 +79,10 @@ public partial class MapPanel : UserControl
         _foothold.Visible = _settings.FootholdZones;
         _foothold.ViewProvider = () => Nav.View;
         _symbols.Settings = _settings;
+        _symbols.Owners = _areas.Owners = _settings.Owners;
+        ShowOwners();
+        AreaButton.Visibility = OwnersButton.Visibility = airfieldView ? Visibility.Collapsed : Visibility.Visible;
+        if (!airfieldView) MapArea.Children.Add(new MessageTrayView());
         _symbols.PlayersOnlyApplies = WorkspacePreset == MainWindow.GciPreset;
         _measure.Obstacles = () => _symbols.Obstacles;
         _symbols.ViewProvider = () => Nav.View;
@@ -153,9 +160,16 @@ public partial class MapPanel : UserControl
         AppState.Tags.Changed += Surface.Invalidate;
         AppState.PlayersOnlyChanged += Surface.Invalidate;
         AppState.Engagements.Changed += _measure.Invalidate;
+        AppState.Flights.Changed += OnFlightsChanged;
+        FlightDesk.AreaChanged += OnFlightsChanged;
         // The methods being worked flash beside their contacts while an NCTR request runs.
-        _nctrFlash ??= new System.Windows.Threading.DispatcherTimer(TimeSpan.FromMilliseconds(500), System.Windows.Threading.DispatcherPriority.Background,
-            (_, _) => { if (AppState.Store.Nctr?.Requests.Any(r => r.Running) == true || AppState.Store.Launches.Count > 0) Surface.Invalidate(); }, Dispatcher);
+        // So do pilots whose handoff waits for an answer (250 ms halves).
+        _nctrFlash ??= new System.Windows.Threading.DispatcherTimer(TimeSpan.FromMilliseconds(250), System.Windows.Threading.DispatcherPriority.Background,
+            (_, _) =>
+            {
+                if (AppState.Flights.Handoffs.Count > 0 || AppState.Store.Nctr?.Requests.Any(r => r.Running) == true || AppState.Store.Launches.Count > 0)
+                    Surface.Invalidate();
+            }, Dispatcher);
         _nctrFlash.Start();
         OnAirfieldSelectionChanged();  // picked before this map loaded
         ApplyTrackFilters();
@@ -219,6 +233,9 @@ public partial class MapPanel : UserControl
         AppState.Tags.Changed -= Surface.Invalidate;
         AppState.PlayersOnlyChanged -= Surface.Invalidate;
         AppState.Engagements.Changed -= _measure.Invalidate;
+        AppState.Flights.Changed -= OnFlightsChanged;
+        FlightDesk.AreaChanged -= OnFlightsChanged;
+        StopArea();
         _nctrFlash?.Stop();
         CloseRwrClock();
         CloseNctr();
@@ -604,6 +621,90 @@ public partial class MapPanel : UserControl
 
     private void Fit_Click(object sender, RoutedEventArgs e) => FitPicture();
 
+    // ---- Controllers: owner colours and areas of operations (0.17) ----------------------------
+
+    private void OnFlightsChanged()
+    {
+        _areas.Invalidate();
+        _symbols.Invalidate();
+    }
+
+    private void Owners_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.Owners = (OwnerView)(((int)_settings.Owners + 1) % 3);
+        _symbols.Owners = _areas.Owners = _settings.Owners;
+        ShowOwners();
+        OnFlightsChanged();
+    }
+
+    private void ShowOwners() => OwnersButton.Content = _settings.Owners switch
+    {
+        OwnerView.All => "Owners: all",
+        OwnerView.Mine => "Owners: mine",
+        _ => "Owners: off",
+    };
+
+    private void Area_Click(object sender, RoutedEventArgs e)
+    {
+        if (_areas.Drawing is null) StartArea();
+        else _ = FinishAreaAsync();
+    }
+
+    private void StartArea()
+    {
+        if (!AppState.Connection.IsConnected || !AppState.Flights.Available)
+        {
+            AreaButton.IsChecked = false;
+            MessageTray.Info("Areas need a connection to a NEBO 0.17 server");
+            return;
+        }
+        _areas.Drawing = [];
+        _areas.DrawColor = FlightDesk.ColorOf(AppState.Flights.Controller(AppState.Flights.MyId)) is { } c
+            ? new SkiaSharp.SKColor(c.R, c.G, c.B) : new SkiaSharp.SKColor(0xFF, 0x7A, 0x1A);
+        AreaButton.IsChecked = true;
+        AreaButton.Content = "Done";
+        MapArea.Cursor = Cursors.Cross;
+        if (Window.GetWindow(this) is { } w) w.PreviewKeyDown += AreaKey;
+        _areas.Invalidate();
+    }
+
+    private void StopArea()
+    {
+        if (_areas.Drawing is null) return;
+        _areas.Drawing = null;
+        _areas.Pointer = null;
+        AreaButton.IsChecked = false;
+        AreaButton.Content = "Area";
+        MapArea.Cursor = null;
+        if (Window.GetWindow(this) is { } w) w.PreviewKeyDown -= AreaKey;
+        _areas.Invalidate();
+    }
+
+    private async Task FinishAreaAsync()
+    {
+        var points = _areas.Drawing?.ToList() ?? [];
+        StopArea();
+        if (points.Count < Core.Areas.MinPoints)
+        {
+            MessageTray.Info($"An area needs at least {Core.Areas.MinPoints} corners");
+            return;
+        }
+        await FlightDesk.AddAreaAsync(points);
+    }
+
+    private void AreaKey(object sender, KeyEventArgs e)
+    {
+        if (_areas.Drawing is not { } drawing) return;
+        switch (e.Key)
+        {
+            case Key.Escape: StopArea(); break;
+            case Key.Enter: _ = FinishAreaAsync(); break;
+            case Key.Back when drawing.Count > 0: drawing.RemoveAt(drawing.Count - 1); _areas.Invalidate(); break;
+            default: return;
+        }
+        e.Handled = true;
+    }
+
     // ---- Ruler (right-drag) and bullseye readout (hold the bullseye key) -----------------
 
     /// <summary>A ruler end at a screen point: on the track under it if there is one.</summary>
@@ -664,6 +765,13 @@ public partial class MapPanel : UserControl
 
     private void MapArea_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (MessageTrayView.Contains(e.OriginalSource)) return;  // the tray's cards take their own clicks
+        if (_areas.Drawing is not null)
+        {
+            _swallowRightUp = true;  // drawing an area: the right button does nothing
+            e.Handled = true;
+            return;
+        }
         if (RwrCanvas.IsVisible) return;  // the clock takes the clicks while open
         _rightDownAt = e.GetPosition(MapArea);
         e.Handled = true;  // the map itself does nothing with the right button here
@@ -679,6 +787,13 @@ public partial class MapPanel : UserControl
 
     private void MapArea_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
     {
+        if (MessageTrayView.Contains(e.OriginalSource)) return;  // the tray's cards take their own clicks
+        if (_swallowRightUp)
+        {
+            _swallowRightUp = false;
+            e.Handled = true;
+            return;
+        }
         if (!_rightPressed) return;
         _rightPressed = false;
         if (_rulerButton == MouseButton.Right) EndRuler();
@@ -694,6 +809,7 @@ public partial class MapPanel : UserControl
     /// <summary>Middle and side buttons: point info or the ruler when bound to them.</summary>
     private void MapArea_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
+        if (MessageTrayView.Contains(e.OriginalSource)) return;  // the tray's cards take their own clicks
         if (RwrCanvas.IsVisible || NctrCanvas.IsVisible || e.ChangedButton is MouseButton.Left or MouseButton.Right) return;
         var at = e.GetPosition(MapArea);
         if (Input.Bindings.Get(Input.Bindings.PointInfo).Matches(e))
@@ -710,6 +826,7 @@ public partial class MapPanel : UserControl
 
     private void MapArea_PreviewMouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (MessageTrayView.Contains(e.OriginalSource)) return;  // the tray's cards take their own clicks
         if (_rulerButton is { } b && b == e.ChangedButton && b is not (MouseButton.Left or MouseButton.Right))
         {
             EndRuler();
@@ -787,6 +904,12 @@ public partial class MapPanel : UserControl
         menu.Items.Add(new Separator());
         foreach (var item in PackageMenu.Items(unit)) menu.Items.Add(item);
         menu.Items.Add(new Separator());
+        var flightItems = FlightDesk.MenuItems(unit.Id).ToList();
+        if (flightItems.Count > 0)
+        {
+            foreach (var item in flightItems) menu.Items.Add(item);
+            menu.Items.Add(new Separator());
+        }
         if (LandingQueueItem(unit) is { } landing)
         {
             menu.Items.Add(landing);
@@ -894,6 +1017,19 @@ public partial class MapPanel : UserControl
             fixHit.Fix is null ? null : () => board.ClearLines(fixHit.TrackId)));
         menu.Items.Add(Item("Add F10 mark here…", () => _ = AddMarkAsync(lat, lon), AppState.Connection.IsConnected));
         menu.Items.Add(Item("Coordinates…", () => ShowPointAt(lat, lon)));
+        // Areas are drawn with the toolbar's Area button; here they are removed.
+        if (!IsAirfieldView && AppState.Flights.Available && FlightDesk.MyAreas.Count > 0)
+        {
+            menu.Items.Add(new Separator());
+            if (FlightDesk.MyAreaAt(lat, lon) is var index and >= 0)
+            {
+                var shown = FlightDesk.MyAreaOnF10(index);
+                menu.Items.Add(Item(shown ? "Hide this area from pilots (F10)" : "Show this area to pilots (F10)",
+                    () => _ = FlightDesk.ShowAreaToPilotsAsync(index, !shown)));
+                menu.Items.Add(Item("Remove this area of operations", () => _ = FlightDesk.RemoveAreaAsync(index)));
+            }
+            menu.Items.Add(Item($"Remove all my areas ({FlightDesk.MyAreas.Count})", () => _ = FlightDesk.ClearAreasAsync()));
+        }
         if (board.Lines.Count > 0)
         {
             menu.Items.Add(new Separator());
@@ -1515,7 +1651,13 @@ public partial class MapPanel : UserControl
 
     private void MapArea_PreviewMouseMove(object sender, MouseEventArgs e)
     {
+        if (MessageTrayView.Contains(e.OriginalSource)) return;  // the tray's cards take their own clicks
         var p = e.GetPosition(MapArea);
+        if (_areas.Drawing is not null)
+        {
+            _areas.Pointer = Nav.View.ToLatLon(p.X, p.Y);
+            _areas.Invalidate();
+        }
         // Every contact near the pointer (Settings → General, 10 NM) shows its full label.
         var hover = _symbols.HoverTest(p.X, p.Y);
         if (!hover.SetEquals(_symbols.HoverIds))
@@ -1599,7 +1741,28 @@ public partial class MapPanel : UserControl
 
     private void MapArea_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (MessageTrayView.Contains(e.OriginalSource)) return;  // the tray's cards take their own clicks
         if (RwrCanvas.IsVisible) return;  // the clock takes the clicks while open
+        if (_areas.Drawing is { } corners)
+        {
+            e.Handled = true;  // a corner, not a pan or a selection
+            var at = e.GetPosition(MapArea);
+            // Back on the first corner, or a double-click: the area is done.
+            var first = corners.Count >= Core.Areas.MinPoints ? SkDraw.ScreenLonLat(Nav.View, corners[0].Lon, corners[0].Lat) : default;
+            if (corners.Count >= Core.Areas.MinPoints && Math.Abs(first.X - at.X) <= 10 && Math.Abs(first.Y - at.Y) <= 10)
+            {
+                _ = FinishAreaAsync();
+                return;
+            }
+            if (e.ClickCount == 2)
+            {
+                _ = FinishAreaAsync();  // the first click of the double-click placed the last corner
+                return;
+            }
+            if (corners.Count < Core.Areas.MaxPoints) corners.Add(Nav.View.ToLatLon(at.X, at.Y));
+            _areas.Invalidate();
+            return;
+        }
         if (_rulerButton == MouseButton.Right)
         {
             PinRuler();
@@ -1703,6 +1866,7 @@ public partial class MapPanel : UserControl
 
     private void MapArea_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        if (MessageTrayView.Contains(e.OriginalSource)) return;  // the tray's cards take their own clicks
         var at = e.GetPosition(MapArea);
         if (RwrCanvas.IsVisible) return;
         if (_blockDrag is { } bd)

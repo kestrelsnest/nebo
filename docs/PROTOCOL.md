@@ -28,6 +28,7 @@ website: all mission information does, **except units** (positions, tracks, pict
 | `command` | client → server | — | no | when a controller acts (rate-limited) |
 | `command_result` | server → client | that client | no | answer to each `command` |
 | `pilots` | server → client | coalition | no | after login, then when the side's players or their slots change (checked every 2 s) |
+| `chat` | server → client | coalition | no | after login, then when the side's chat log changes (DLL 0.17) |
 | `dtc_live` | server → client | coalition | no | every 10 s (`dtc = true`): what the DTC tab fills cartridges from |
 | `designations` | server → client | coalition | no | while the side's pilots send targeting pod points (DLL 0.15) |
 | `dtc_request` / `dtc_push` / `dtc_none` / `dtc_fail` | pilot hook ↔ server | the pilot's side | no | every 10 s while the pilot is on a side (DLL 0.14) |
@@ -121,7 +122,14 @@ Every command and refusal is logged to dcs.log with coalition and client address
 `{"type":"command","id":7,"name":"message_unit","unit":4940,"text":"…","seconds":30}` — an
 on-screen text box (`trigger.action.outTextForUnit`, not chat) for one aircraft of the
 controller's own coalition with a player in it. `unit`: DCS unit id from the picture; `text`:
-≤ 1 500 bytes, no control characters except newlines; `seconds`: 5–120.
+≤ 1 500 bytes, no control characters except newlines; `seconds`: 5–120. From DLL 0.17 the side's
+controllers see it in `chat` (kind `nebo`, `to` the player).
+
+`{"type":"command","id":20,"name":"message_side","text":"Push tactical CH 3","seconds":15,"audience":"side"}`
+(DLL 0.17) — an on-screen text for every pilot of the controller's side (`audience` `side`,
+`trigger.action.outTextForCoalition`) or for everyone (`all`, `trigger.action.outText`), shown as
+"NEBO <callsign>: <text>". `text` and `seconds` as for `message_unit`. It goes into `chat`
+(kind `nebo`) for the side, or for both sides when sent to all.
 
 `{"type":"command","id":8,"name":"mark_add","x":30000,"z":40000,"text":"SA-6 (GCI)","threat":"SA-6"}`
 (DLL 0.6) — an F10 map mark for the controller's own coalition
@@ -162,12 +170,68 @@ most 400 km a side) with the methods named (`jem`, `hrrp`, `isar`, `size`, `roto
 commas). Result `"value":"3"`: the request id; refused with `no contacts in the area`, `three
 NCTR requests already running`, `no known method …`.
 
+### Controllers and flights (DLL 0.17)
+`{"type":"command","id":15,"name":"controller_info","callsign":"Overlord","position":"gci","khz":251000,"color":"#FF7A1A"}`
+— who this controller is: `callsign` (rule as at login; empty keeps the login's), `position`
+`gci`, `atc:<airfield id>` or empty, `khz` the frequency they work (0–400 000, 0: none), `color`
+(optional, `#rrggbb`) the colour their pilots and area are marked in. Result
+`"value":"3"`: this controller's id, used in `owner`, `from` and `to` below. The first one with a
+callsign puts "NEBO: Overlord (GCI) on station, 251.000" on the side's pilots' screens for 15 s
+(`announce_controllers = false` in NEBO.lua turns that off), and "… off station" when the
+controller leaves.
+
+`{"type":"command","id":19,"name":"area_set","area":"34.5,32.9;34.9,33.4;34.4,33.8|35.1,35.9;35.4,36.2;35.0,36.4"}`
+— this controller's areas of operations, all of them each time: up to 10 split by `|`, each 3–40
+`lat,lon` corners split by `;` (digits, `.`, `,`, `;`, `-`, `|` only, ≤ 12 000 bytes), or `""` to
+clear them. Shown to the side's controllers in `controllers`; gone when the controller logs out
+(the client sends them again on connect). `"f10":"01"` (optional, ≤ 10 characters `0`/`1`, one
+per area, missing ones `0`): the side's pilots see those areas on their F10 map — a read-only
+polygon in the controller's `color`, lightly filled, with the callsign at its north corner
+(`trigger.action.markupToAll` / `textToAll` for the coalition). They go when the area is
+removed or unflagged, the controller logs out, or the mission ends.
+
+`{"type":"command","id":16,"name":"claim","units":["4940"]}` — this controller has these pilots
+now (1–50 DCS unit ids, as strings). Refused for a pilot another controller has or one in another
+controller's handoff. `release` with the same fields lets them go.
+
+`{"type":"command","id":17,"name":"handoff","units":["4940","4941"],"to":5,"package":"Ford","khz":262000}`
+— offers own pilots to controller 5; `package` (name, optional, the callsign rule) and `khz`
+travel with them. Result `"value":"2"`: the handoff id. Nothing changes until the receiver
+answers `{"type":"command","id":18,"name":"handoff_answer","handoff":2,"accept":true}` (or
+`false`); the sender may take it back with `"accept":false`. The client texts the pilots
+(`message_unit`) after an accepted handoff or a pick-up; the server does not.
+
 Answer to the same client: `{"type":"command_result","id":7,"ok":true}` (with `"value"` when
 the command returns one) or
 `{"type":"command_result","id":7,"ok":false,"error":"no player in that aircraft"}`. Errors
 include `unknown command`, field errors (`seconds: 5 to 120`, `text has control characters`),
 `too many commands, wait a moment`, `server busy`, `server not ready yet`, `not an aircraft of
 your coalition (or it is gone)`.
+
+## controllers (coalition, DLL 0.17)
+`{"type":"controllers","coalition":"blue","controllers":[{"id":3,"callsign":"Overlord","user":"kestrel","position":"gci","khz":251000,"color":"#FF7A1A","area":"34.5,32.9;34.9,33.4;34.4,33.8","f10":"1"}]}`
+— the side's logged-in controllers (`user`: the Discord name, if any; `color`, `area` and `f10`
+empty when not set). Sent when it changes.
+
+## chat (coalition, DLL 0.17)
+`{"type":"chat","coalition":"blue","lines":[{"id":176299990012,"time":1762999900,"kind":"side","to":"blue","from":"Viper1","text":"GCI, picture?"}]}`
+— the side's last 60 lines, sent whole when one is added; clients keep the lines whose `id` is
+higher than the last one they have (ids keep growing across server restarts). `time`: Unix
+seconds (UTC). `kind`: `chat` (players' all chat, to both sides), `side` (side chat, to that
+side only), `mission` (the mission's on-screen text for that side or for all — e.g. Foothold's
+new missions and captures; texts for one unit or group are left out; the same text within 30 s
+counts once), `join` / `leave` (a player connected or left, to both sides), `nebo` (a
+controller's `message_unit` or `message_side`). `to`: `all`, `blue`, `red` or a player's name.
+Players' chat is left out when `relay_chat = false` in NEBO.lua.
+
+## flights (coalition, DLL 0.17)
+`{"type":"flights","coalition":"blue","flights":[{"unit":4940,"rid":16779778,"group":12,"gname":"Akrotiri F/A-18C","player":"Viper1","type":"FA-18C_hornet","state":"ground","field":22,"field_name":"Akrotiri","since":1234.5,"event":"birth","owner":3}],"handoffs":[{"id":2,"from":3,"to":5,"units":[4940],"package":"","khz":0,"time":1240.0}]}`
+— the side's player aircraft from the mission's birth, takeoff, land and gone events (a full
+list once at mission start). `rid`: DCS's runtime object id, what SRS reports as `unitId`;
+`state` `ground`, `air` or `landed`; `field`: the airfield (within 5 km) it spawned at, took off
+from or landed at (0: none); `since`: mission time of `event`; `owner`: the controller id who
+has it, or null. `handoffs`: offers not answered yet. Sent at most twice a second, when
+something changed.
 
 ## marks (coalition)
 `{"type":"marks","coalition":"blue","marks":[{"id","text","x","z","lat","lon","time","author",
@@ -246,7 +310,10 @@ of order), `discord` / `discord_down`, `role` (no controller role), `password`, 
 3. client `{"type":"proof","proof":"<hex HMAC-SHA256(key = server password, message = nonce)>"}`
    → `{"type":"auth_ok","version":2,"user":…,"sides":["blue","red"]}`. The password is never
    sent; the nonce is new for every connection.
-4. client `{"type":"side","coalition":"blue"}` → `{"type":"side_ok","coalition":"blue"}`; from
+4. client `{"type":"side","coalition":"blue","callsign":"Overlord"}` →
+   `{"type":"side_ok","coalition":"blue"}` (`callsign`, DLL 0.17, optional: ≤ 24 bytes of
+   letters, digits, spaces and `- / . ' :`; announced to the side's pilots with
+   `controller_info`, below); from
    here the connection works as below. The server re-checks the Discord role every 5 minutes
    and sends `{"type":"closed","reason":"role"}` when it is gone.
 
@@ -335,7 +402,10 @@ shelter, 72/104 open, 100 small).
 
 Zone: `name, side (0 neutral, 1 red, 2 blue), x, z, r (trigger zone, DCS metres), active,
 suspended (idle, units despawned), airbase, facility, logistic, built, max (owner's upgrade
-slots), wpt, lat, lon` (zone centre, server-converted for the website). Hidden zones are not sent.
+slots), wpt, lat, lon` (zone centre, server-converted for the website), `tags` (0.17: the
+missions Foothold writes under the zone's name on a side's F10 map, `[{side, tag, label}]` — `tag`
+as Foothold keeps it, e.g. `Bomb runway`, `label` localised; in PvP each side's own, otherwise
+blue's only). Hidden zones are not sent.
 `missions`: Foothold's mission board — `{title, description, side, status: "active"|"available", strike}`
 (texts as Foothold prints them). `credits`: each side's Foothold credits. Sent when zones, links or
 missions change; a change in credits alone at most once a minute.

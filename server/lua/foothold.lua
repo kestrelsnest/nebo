@@ -65,6 +65,48 @@ NEBO_footholdPush = (function()
         return table.concat(list, ","), titles
     end
 
+    -- The mission tags Foothold writes under a zone's name on the F10 map ("Bomb runway!"), per
+    -- side: in PvP each side's own (objectivesBySide[side].activeTags), otherwise blue's only
+    -- (ActiveCurrentMission). Resupply is left out at a side's own logistic centre, as Foothold does.
+    local tagKeys = { Attack = "ATTACK", ["Bomb runway"] = "BOMB_RUNWAY", Capture = "CAPTURE", DEAD = "DEAD",
+        Recon = "RECON", Resupply = "RESUPPLY", SEAD = "SEAD" }
+    local function tagLabel(tag)
+        local key = tagKeys[tag]
+        if key and type(L10N) == "table" and L10N.Get then
+            local ok, text = pcall(L10N.Get, L10N, "ZONE_MISSION_TAG_" .. key)
+            if ok and type(text) == "string" and text ~= "" and not text:find("ZONE_MISSION_TAG_", 1, true) then return text end
+        end
+        return tag
+    end
+    local function zoneTags(z)
+        local out = {}
+        local function add(side, cur)
+            if cur == nil then return end
+            local list = {}
+            if type(cur) == "table" then
+                for k in pairs(cur) do list[#list + 1] = tostring(k) end
+            else
+                list[1] = tostring(cur)
+            end
+            table.sort(list)
+            for _, tag in ipairs(list) do
+                if not (tag == "Resupply" and tonumber(z.side) == side and z.LogisticCenter == true) then
+                    out[#out + 1] = string.format('{"side":%d,"tag":%s,"label":%s}', side, jstr(tag), jstr(tagLabel(tag)))
+                end
+            end
+        end
+        if type(GlobalSettings) == "table" and GlobalSettings.pvpEnabled == true then
+            local by = type(bc.objectivesBySide) == "table" and bc.objectivesBySide or {}
+            for _, side in ipairs({ 1, 2 }) do
+                local o = by[side]
+                if type(o) == "table" and type(o.activeTags) == "table" then add(side, o.activeTags[z.zone]) end
+            end
+        elseif type(ActiveCurrentMission) == "table" then
+            add(2, ActiveCurrentMission[z.zone])
+        end
+        return "[" .. table.concat(out, ",") .. "]"
+    end
+
     -- Every 5 minutes: Foothold's own player scores. Keyed by UCID in Foothold; the raw UCID
     -- only travels to the hook, which replaces it with the keyed id before writing anything.
     local function playerStats()
@@ -99,11 +141,11 @@ NEBO_footholdPush = (function()
                 local wpt = type(z.flavorText) == "string" and z.flavorText:match("WPT%s*(%d+)") or nil
                 local lat, lon = coord.LOtoLL({ x = p.x, y = 0, z = p.z })
                 zones[#zones + 1] = string.format(
-                    '{"name":%s,"side":%d,"x":%.0f,"z":%.0f,"r":%.0f,"lat":%.5f,"lon":%.5f,"active":%s,"suspended":%s,"airbase":%s,"facility":%s,"logistic":%s,"built":%d,"max":%d,"wpt":%s}',
+                    '{"name":%s,"side":%d,"x":%.0f,"z":%.0f,"r":%.0f,"lat":%.5f,"lon":%.5f,"active":%s,"suspended":%s,"airbase":%s,"facility":%s,"logistic":%s,"built":%d,"max":%d,"wpt":%s,"tags":%s}',
                     jstr(z.zone), side, p.x, p.z, p.r, lat, lon,
                     z.active == false and "false" or "true", z.suspended and "true" or "false",
                     z.airbaseName and jstr(z.airbaseName) or "null", z.facility and jstr(z.facility) or "null",
-                    z.LogisticCenter and "true" or "false", count(z.built), count(upgrades), wpt or "null")
+                    z.LogisticCenter and "true" or "false", count(z.built), count(upgrades), wpt or "null", zoneTags(z))
             end
         end
         -- Captures since the last snapshot (the first snapshot only learns the sides).

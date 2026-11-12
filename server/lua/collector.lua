@@ -247,7 +247,8 @@ function NEBO_markAdd(x, z, text, threat, coalitionName)
     local used = {}
     for _, m in ipairs(world.getMarkPanels() or {}) do used[m.idx] = true end
     local reg = NEBO_markReg
-    while used[reg.nextId] do reg.nextId = reg.nextId + 1 end
+    local drawn = NEBO_areaDrawn and NEBO_areaDrawn.live or {}
+    while used[reg.nextId] or drawn[reg.nextId] do reg.nextId = reg.nextId + 1 end
     local id = reg.nextId
     reg.nextId = id + 1
     local pos = { x = x, y = land.getHeight({ x = x, y = z }), z = z }
@@ -263,6 +264,64 @@ function NEBO_markRemove(id, coalitionName)
     trigger.action.removeMark(id)
     NEBO_markReg.marks[id] = nil
     return "ok"
+end
+
+-- Controllers' areas of operations shown to their side's pilots (area_set with f10 flags): each a
+-- read-only polygon in the controller's colour, lightly filled, and the callsign at its north
+-- corner. Removes the controller's previous drawings (ids "a,b,..."), draws spec (areas split by
+-- '|', each "lat,lon;..."); returns "ok:<new ids>" or the reason.
+NEBO_areaDrawn = NEBO_areaDrawn or { nextId = 890000, live = {} }
+
+function NEBO_areaDraw(coalitionName, old, color, label, spec)
+    local side = MARK_SIDES[coalitionName]
+    if not side then return "unknown coalition" end
+    local reg = NEBO_areaDrawn
+    for id in tostring(old):gmatch("%d+") do
+        id = tonumber(id)
+        pcall(trigger.action.removeMark, id)
+        reg.live[id] = nil
+    end
+    if spec == "" then return "ok:" end
+    local r, g, b = tostring(color):match("^#(%x%x)(%x%x)(%x%x)$")
+    r, g, b = tonumber(r or "B0", 16) / 255, tonumber(g or "B0", 16) / 255, tonumber(b or "B0", 16) / 255
+    local line, fill, clear = { r, g, b, 0.9 }, { r, g, b, 0.12 }, { 0, 0, 0, 0 }
+    local used = {}
+    for _, m in ipairs(world.getMarkPanels() or {}) do used[m.idx] = true end
+    local function newId()
+        while used[reg.nextId] or reg.live[reg.nextId] or NEBO_markReg.marks[reg.nextId] do reg.nextId = reg.nextId + 1 end
+        local id = reg.nextId
+        reg.nextId = id + 1
+        return id
+    end
+    local ids, err = {}, nil
+    for area in spec:gmatch("[^|]+") do
+        local pts, top = {}, nil
+        for lat, lon in area:gmatch("(-?[%d.]+),(-?[%d.]+)") do
+            local p = coord.LLtoLO(tonumber(lat), tonumber(lon), 0)
+            local v = { x = p.x, y = 0, z = p.z }
+            pts[#pts + 1] = v
+            if not top or v.x > top.x then top = v end  -- north is +x
+        end
+        if #pts >= 3 then
+            local id = newId()
+            local args = { 7, side, id }  -- 7: freeform polygon
+            for _, v in ipairs(pts) do args[#args + 1] = v end
+            args[#args + 1] = line
+            args[#args + 1] = fill
+            args[#args + 1] = 1      -- solid line
+            args[#args + 1] = true   -- read-only: pilots cannot delete it
+            args[#args + 1] = label
+            local ok, e = pcall(trigger.action.markupToAll, unpack(args))
+            if ok then ids[#ids + 1] = id; reg.live[id] = true else err = tostring(e) end
+            if label ~= "" then
+                local tid = newId()
+                ok, e = pcall(trigger.action.textToAll, side, tid, top, line, clear, 14, true, label)
+                if ok then ids[#ids + 1] = tid; reg.live[tid] = true else err = tostring(e) end
+            end
+        end
+    end
+    if err and #ids == 0 then return "not drawn: " .. err end
+    return "ok:" .. table.concat(ids, ",")
 end
 
 -- Per side one line {"type":"marks","coalition","marks":[{id,text,x,z,lat,lon,time,author,
@@ -293,11 +352,13 @@ function NEBO_marks()
             cache[m.idx] = { key = key, json = json }
             return json
         end
+        -- Controllers' areas on the F10 map (NEBO_areaDraw) are drawings, not marks: left out.
+        local drawn = NEBO_areaDrawn and NEBO_areaDrawn.live or {}
         for name, side in pairs(MARK_SIDES) do
             local out = {}
             for _, m in ipairs(panels) do
                 local mside = tonumber(m.coalition) or -1
-                if (mside == side or mside == -1) and type(m.pos) == "table" and #out < 300 then
+                if (mside == side or mside == -1) and type(m.pos) == "table" and not drawn[m.idx] and #out < 300 then
                     out[#out + 1] = markJson(m)
                 end
             end
@@ -570,6 +631,120 @@ end)()
 
 function NEBO_analyticsDrain()
     local ok, result = pcall(NEBO_analytics.drain)
+    return ok and result or ""
+end
+
+-- Flights (controller workflow, DLL 0.17): players' aircraft spawning, taking off, landing and
+-- going away, for the hook's flights channel (who owns which pilot). One line per event, fields
+-- separated by tabs: kind, unit id, runtime id (unit.id_, what SRS calls the unitId), group id,
+-- group name, player, type, coalition, airfield id, airfield name, mission time. Kinds: birth,
+-- air (already flying when NEBO started), ground (already on the ground), takeoff, land, gone.
+-- Drained by the hook every half second (NEBO_flightsDrain); NEBO_flightsSeed lists the players
+-- already in aircraft when the hook starts or the collector is re-injected.
+NEBO_flights = (function()
+    local queue = {}
+    local players = {}  -- unit id -> true while a player sits in it (dead/leave events may lack the name)
+    local E = world.event
+    local KIND = {
+        [E.S_EVENT_BIRTH] = "birth", [E.S_EVENT_TAKEOFF] = "takeoff", [E.S_EVENT_LAND] = "land",
+        [E.S_EVENT_PLAYER_LEAVE_UNIT] = "gone", [E.S_EVENT_DEAD] = "gone", [E.S_EVENT_CRASH] = "gone",
+        [E.S_EVENT_EJECTION] = "gone", [E.S_EVENT_PILOT_DEAD] = "gone",
+    }
+
+    local function clean(s) return (tostring(s or ""):gsub("[\t\r\n]", " ")) end
+
+    -- The airfield a unit on the ground is at: the nearest within 5 km, else none.
+    local function nearestField(u)
+        local okP, p = pcall(u.getPoint, u)
+        if not okP or not p then return nil end
+        local best, bestD = nil, 5000
+        for _, ab in ipairs(world.getAirbases() or {}) do
+            local okA, q = pcall(ab.getPoint, ab)
+            local okD, desc = pcall(ab.getDesc, ab)
+            if okA and q and not (okD and desc and desc.category == Airbase.Category.SHIP) then
+                local d = math.sqrt((q.x - p.x) ^ 2 + (q.z - p.z) ^ 2)
+                if d < bestD then best, bestD = ab, d end
+            end
+        end
+        return best
+    end
+
+    local function line(kind, u, place)
+        local ok, l = pcall(function()
+            local g = u:getGroup()
+            local okN, player = pcall(u.getPlayerName, u)
+            local fieldId, fieldName = 0, ""
+            if place then
+                local okI, id = pcall(place.getID, place)
+                local okM, name = pcall(place.getName, place)
+                fieldId, fieldName = okI and tonumber(id) or 0, okM and name or ""
+            end
+            return table.concat({ kind, tostring(u:getID()), tostring(tonumber(u.id_) or 0), tostring(g and g:getID() or 0),
+                clean(g and g:getName()), clean(okN and player), clean(u:getTypeName()), tostring(u:getCoalition()),
+                tostring(fieldId), clean(fieldName), string.format("%.1f", timer.getTime()) }, "\t")
+        end)
+        return ok and l or nil
+    end
+
+    local handler = {}
+    function handler:onEvent(e)
+        pcall(function()
+            local kind = KIND[e.id]
+            local u = e.initiator
+            if not kind or not u then return end
+            local okI, id = pcall(u.getID, u)
+            if not okI or not id then return end
+            local okP, player = pcall(u.getPlayerName, u)
+            if kind == "gone" then
+                if not players[id] then return end
+                players[id] = nil
+                queue[#queue + 1] = string.format("gone\t%d", id)
+                return
+            end
+            if not (okP and player) then return end
+            players[id] = true
+            local place = e.place
+            if kind == "birth" and not place then place = nearestField(u) end
+            queue[#queue + 1] = line(kind, u, place)
+        end)
+        if #queue > 500 then table.remove(queue, 1) end
+    end
+    if NEBO_flightsHandler then world.removeEventHandler(NEBO_flightsHandler) end
+    NEBO_flightsHandler = handler
+    world.addEventHandler(handler)
+
+    return {
+        drain = function()
+            if #queue == 0 then return "" end
+            local out = table.concat(queue, "\n")
+            queue = {}
+            return out
+        end,
+        seed = function()
+            local out = {}
+            for side = 1, 2 do
+                for _, u in ipairs(coalition.getPlayers(side) or {}) do
+                    local okI, id = pcall(u.getID, u)
+                    local okA, air = pcall(u.inAir, u)
+                    if okI and id then
+                        players[id] = true
+                        local l = line(okA and air and "air" or "ground", u, not (okA and air) and nearestField(u) or nil)
+                        if l then out[#out + 1] = l end
+                    end
+                end
+            end
+            return table.concat(out, "\n")
+        end,
+    }
+end)()
+
+function NEBO_flightsDrain()
+    local ok, result = pcall(NEBO_flights.drain)
+    return ok and result or ""
+end
+
+function NEBO_flightsSeed()
+    local ok, result = pcall(NEBO_flights.seed)
     return ok and result or ""
 end
 

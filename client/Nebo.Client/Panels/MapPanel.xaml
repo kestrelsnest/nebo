@@ -11,6 +11,10 @@
             <TextBlock Text="Label pos" VerticalAlignment="Center" Margin="10,0,4,0"/>
             <ComboBox x:Name="TagsBox" Width="80" SelectionChanged="TagsBox_SelectionChanged"
                       ToolTip="Where aircraft labels go. Above: above the aircraft, behind it, steady while it turns. Vector: beside its speed vector"/>
+            <CheckBox x:Name="AreaButton" Content="Area" Margin="10,0,0,0" VerticalAlignment="Center" Click="Area_Click"
+                          ToolTip="Draw an area of operations (up to 10): click its corners; to finish click the first corner again, double-click, press Enter or click Done. Your side's controllers see them; a new pilot in one alerts you first. Right-click inside one of yours to remove it"/>
+            <Button x:Name="OwnersButton" Margin="4,0,0,0" Padding="6,0" Click="Owners_Click"
+                    ToolTip="Controllers' areas and owner colours: All (everyone's) → Mine (only your areas and jets) → None"/>
             <CheckBox x:Name="ThreatRingsBox" Content="Threat rings" Margin="10,0,0,0" VerticalAlignment="Center"
                       Checked="ThreatRingsBox_Changed" Unchecked="ThreatRingsBox_Changed"/>
             <CheckBox x:Name="MarksBox" Content="F10 marks" Margin="10,0,0,0" VerticalAlignment="Center"
