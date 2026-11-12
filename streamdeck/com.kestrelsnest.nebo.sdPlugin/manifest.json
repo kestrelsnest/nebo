@@ -3,7 +3,7 @@
   "Author": "Kestrels Nest",
   "Name": "NEBO",
   "Description": "NEBO (DCS ATC/GCI) on your Stream Deck: engagement lines 1–8, SRS channels, labels, workspace and map filters.",
-  "Version": "0.17.1",
+  "Version": "0.17.2",
   "Icon": "images/plugin",
   "Category": "NEBO",
   "CategoryIcon": "images/category",

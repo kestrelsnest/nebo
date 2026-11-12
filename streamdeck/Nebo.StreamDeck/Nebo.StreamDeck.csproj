@@ -9,7 +9,7 @@
     <Product>NEBO ATC/GCI</Product>
     <Company>Kestrel's Nest Community</Company>
     <!-- The NEBO version: same as kVersion in server/dll/src/nebo.cpp (server/package.ps1 checks). -->
-    <Version>0.17.1</Version>
+    <Version>0.17.2</Version>
     <RootNamespace>Nebo.StreamDeck</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>

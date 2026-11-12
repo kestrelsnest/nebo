@@ -1,6 +1,6 @@
 ; NEBO setup: one wizard for every part - the controller app, the Stream Deck plugin, the pilot
 ; hook and the DCS server hook. Built by server\package.ps1 from its package folders:
-;   ISCC.exe /DVersion=0.17.1 /DSrc=<release folder> NEBO.iss
+;   ISCC.exe /DVersion=0.17.2 /DSrc=<release folder> NEBO.iss
 ; Per-user install. Admin rights are asked for only to open the firewall port (server hook).
 ; Silent install (admins): NEBO-Setup-<version>.exe /SILENT /COMPONENTS=server
 ;   [/SERVERDIRS="C:\Users\me\Saved Games\DCS.server"] [/PORT=10309] [/FIREWALL=1]

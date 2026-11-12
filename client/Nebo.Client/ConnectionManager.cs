@@ -34,6 +34,7 @@ public sealed class ConnectionManager(PictureStore store, Dispatcher dispatcher)
         Color = OwnerColors.Parse(login.Color) is null ? null : login.Color;
         Profile = profile;
         var session = _session = new CancellationTokenSource();
+        var seen = new HashSet<string>();
         SetStatus($"Connecting to {host}:{port}…");
         try
         {
@@ -45,6 +46,7 @@ public sealed class ConnectionManager(PictureStore store, Dispatcher dispatcher)
             string? closed = null;
             await foreach (var message in conn.ReadMessagesAsync(session.Token))
             {
+                if (message is not CommandResult && seen.Add(KindOf(message))) AppLog.Write($"first {KindOf(message)}{Describe(message)}");
                 switch (message)
                 {
                     case ClosedMessage c:
@@ -135,6 +137,7 @@ public sealed class ConnectionManager(PictureStore store, Dispatcher dispatcher)
         }
         catch (Exception ex)
         {
+            AppLog.Error($"connection to {host}:{port}", ex);
             SetStatus($"Connection failed: {ex.Message}");
         }
         finally
@@ -167,13 +170,45 @@ public sealed class ConnectionManager(PictureStore store, Dispatcher dispatcher)
         catch (Exception ex)
         {
             _waiting.TryRemove(id, out _);
+            AppLog.Write($"command {name} not sent: {ex.Message}");
             return new CommandResult(id, false, "not sent: " + ex.Message);
         }
         var done = await Task.WhenAny(waiter.Task, Task.Delay(CommandTimeout));
-        if (done == waiter.Task) return waiter.Task.Result;
-        _waiting.TryRemove(id, out _);
-        return new CommandResult(id, false, "no answer from the server");
+        CommandResult result;
+        if (done == waiter.Task) result = waiter.Task.Result;
+        else
+        {
+            _waiting.TryRemove(id, out _);
+            result = new CommandResult(id, false, "no answer from the server");
+        }
+        if (!result.Ok) AppLog.Write($"command {name} failed: {result.Error}");
+        return result;
     }
+
+    /// <summary>For the log: whether this controller's DCS install has the server's terrain,
+    /// which the DCS Map and the Scope map's rivers and roads are drawn from.</summary>
+    private static string LocalTerrain(string id)
+    {
+        try
+        {
+            if (Map.Charts.DcsInstall.Find() is not { } dcs) return "DCS install not found: no DCS Map, no rivers or roads";
+            var dir = System.IO.Path.Combine(dcs, "Mods", "terrains", id);
+            return System.IO.Directory.Exists(dir) ? $"terrain installed in {dcs}" : $"terrain NOT installed in {dcs}: no DCS Map, no rivers or roads";
+        }
+        catch (Exception e) { return "terrain check failed: " + e.Message; }
+    }
+
+    /// <summary>A message's kind for the log: the JSON "type" of a raw one, else its class.</summary>
+    private static string KindOf(object message) =>
+        message is System.Text.Json.Nodes.JsonObject j ? (string?)j["type"] ?? "json" : message.GetType().Name;
+
+    private static string Describe(object message) => message switch
+    {
+        Theatre t => $" ({t.Id}; {LocalTerrain(t.Id)})",
+        FootholdState f => $" ({f.Zones.Count} zones)",
+        AirfieldsMessage a => $" ({a.Airfields.Count} airfields)",
+        _ => "",
+    };
 
     private void FailWaiting(string reason)
     {
@@ -194,6 +229,7 @@ public sealed class ConnectionManager(PictureStore store, Dispatcher dispatcher)
 
     private void SetStatus(string status)
     {
+        AppLog.Write(status);
         Status = status;
         StatusChanged?.Invoke();
     }

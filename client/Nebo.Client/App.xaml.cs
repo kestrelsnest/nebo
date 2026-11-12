@@ -10,6 +10,11 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         AppPaths.MigrateFromDcb();  // before anything reads settings
+        AppLog.Start();
+        // Crashes go to nebo.log with their stack; what happens next is unchanged.
+        DispatcherUnhandledException += (_, a) => AppLog.Error("crash (UI thread)", a.Exception);
+        AppDomain.CurrentDomain.UnhandledException += (_, a) => AppLog.Write($"ERROR crash: {a.ExceptionObject}");
+        TaskScheduler.UnobservedTaskException += (_, a) => AppLog.Error("unobserved task", a.Exception);
         // Diagnosis: NEBO_WPF=software draws the windows without the GPU (with NEBO_RENDERER=cpu).
         if (Environment.GetEnvironmentVariable("NEBO_WPF") == "software")
             System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
@@ -31,6 +36,12 @@ public partial class App : Application
         EventManager.RegisterClassHandler(typeof(Window), Mouse.PreviewMouseDownEvent, new MouseButtonEventHandler(OnMouse));
         EventManager.RegisterClassHandler(typeof(Window), Mouse.PreviewMouseUpEvent, new MouseButtonEventHandler(OnMouse));
         Deactivated += (_, _) => { if (!AppState.Settings.BullseyeToggle) AppState.SetBullsKeyHeld(false); };  // key released while elsewhere
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        AppLog.Stop($"code {e.ApplicationExitCode}");
+        base.OnExit(e);
     }
 
     private static bool Typing => Keyboard.FocusedElement is TextBoxBase or PasswordBox;

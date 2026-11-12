@@ -565,6 +565,7 @@ public sealed class MapSurface : Decorator
     internal static void Log(string text)
     {
         if (Interlocked.Increment(ref _logged) > 20) return;
+        AppLog.Write("render: " + text);
         try
         {
             var dir = AppPaths.Local;

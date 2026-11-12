@@ -583,4 +583,4 @@ without a jet's files, the tab says so for that jet.
 | DCS Map slow the first time | it is drawn once per terrain in the background (about 2 minutes), then instant |
 | No enemy SAMs on the scope | normal for missions before 2012: triangulate them (section 6) |
 | Nothing in the SRS tab | SRS client running and connected in External AWACS Mode |
-| Anything else | `%LocalAppData%\NEBO\render-errors.log` (client), the server's `dcs.log` (search "NEBO") |
+| Anything else | `%LocalAppData%\NEBO\nebo.log` (client: connections, what the server sent, whether your DCS has the server's terrain, errors, crashes; the session before is `nebo-previous.log`), the server's `dcs.log` (search "NEBO") |

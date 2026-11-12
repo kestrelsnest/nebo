@@ -4,6 +4,14 @@ NEBO ATC/GCI by Kestrel's Nest Community, formerly Overseer and Eagle's Nest (co
 Newest first. Dates are commit dates. "DLL" is the server module (`nebo.dll`, before 0.16.0
 `dcb.dll`), whose version goes up together with the protocol.
 
+## 0.17.2 — 2026-11-12
+**Client**
+- A **client log**, `%LocalAppData%\NEBO\nebo.log` (the session before: `nebo-previous.log`):
+  start and exit, every connection status, the first message of each kind from the server,
+  whether your DCS install has the server's terrain (the DCS Map and the Scope map's rivers and
+  roads need it), failed commands, render errors and crashes with their stack. Never passwords
+  or the text of messages. Send it along when something is wrong.
+
 ## 0.17.1 — 2026-11-12
 **Fixed**
 - Foothold zones never showed when Foothold started after NEBO's first look, for example on a
