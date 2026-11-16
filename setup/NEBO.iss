@@ -1,6 +1,6 @@
 ; NEBO setup: one wizard for the controller app, the Stream Deck plugin and the pilot hook.
 ; Built by package.ps1 from its package folders:
-;   ISCC.exe /DVersion=0.17.3 /DSrc=<release folder> NEBO.iss
+;   ISCC.exe /DVersion=0.18.0 /DSrc=<release folder> NEBO.iss
 ; Per-user install, no admin rights.
 ; The DCS server hook is not part of it (its own setup, handed to server admins). A setup from
 ; 0.16-0.17 that installed the server hook leaves it in place on the server; this one only drops

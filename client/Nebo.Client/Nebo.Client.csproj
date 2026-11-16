@@ -23,7 +23,7 @@
     <Product>NEBO ATC/GCI</Product>
     <Company>Kestrel's Nest Community</Company>
     <!-- The NEBO version: the server part (private NEBO-Server repo) uses the same number; package.ps1 checks the client and the Stream Deck match. -->
-    <Version>0.17.3</Version>
+    <Version>0.18.0</Version>
     <ApplicationIcon>Assets\nebo.ico</ApplicationIcon>
     <!-- SkiaSharp.Views.WPF's OpenGL support depends on OpenTK packaged for .NET Framework only. -->
     <NoWarn>$(NoWarn);NU1701</NoWarn>

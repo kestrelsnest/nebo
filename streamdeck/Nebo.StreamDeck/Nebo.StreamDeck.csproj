@@ -9,7 +9,7 @@
     <Product>NEBO ATC/GCI</Product>
     <Company>Kestrel's Nest Community</Company>
     <!-- The NEBO version: the server part (private NEBO-Server repo) uses the same number; package.ps1 checks the client and the Stream Deck match. -->
-    <Version>0.17.3</Version>
+    <Version>0.18.0</Version>
     <RootNamespace>Nebo.StreamDeck</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>

@@ -4,7 +4,7 @@ NEBO ATC/GCI by Kestrel's Nest Community, formerly Overseer and Eagle's Nest (co
 Newest first. Dates are commit dates. "DLL" is the server module (`nebo.dll`, before 0.16.0
 `dcb.dll`), whose version goes up together with the protocol.
 
-## Unreleased
+## 0.18.0 — 2026-11-16
 **The server part leaves this repository**
 - The DCS server part (`nebo.dll`, the hook and scripts) is now separate and private, under its
   own licence, handed to server admins by Kestrel's Nest with its own setup
