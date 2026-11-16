@@ -1,0 +1,81 @@
+<UserControl x:Class="Nebo.Client.Panels.EngagementsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Red and white stripes around the tab: engagements can't be mistaken for another panel. -->
+    <Border BorderThickness="4">
+        <Border.BorderBrush>
+            <LinearGradientBrush MappingMode="Absolute" SpreadMethod="Repeat" StartPoint="0,0" EndPoint="8,8">
+                <GradientStop Color="#DC1E1E" Offset="0"/>
+                <GradientStop Color="#DC1E1E" Offset="0.5"/>
+                <GradientStop Color="White" Offset="0.5"/>
+                <GradientStop Color="White" Offset="1"/>
+            </LinearGradientBrush>
+        </Border.BorderBrush>
+    <DockPanel>
+        <ToolBar DockPanel.Dock="Top" ToolBarTray.IsLocked="True">
+            <TextBlock VerticalAlignment="Center" Margin="2,0,8,0" Opacity="0.75"
+                       Text="Right-drag a BRAA line, left-click while dragging to add it."/>
+            <Separator/>
+            <Button Content="Test alert" Click="TestAlert_Click" Margin="6,0,0,0"
+                    ToolTip="Play the engagement alert (the launch alarm's volume)"/>
+            <Button Content="Remove all" Click="RemoveAll_Click" Margin="6,0,0,0"/>
+        </ToolBar>
+        <DataGrid x:Name="Grid" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                  CanUserSortColumns="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                  SelectionMode="Single" SelectionUnit="FullRow" MouseDoubleClick="Grid_MouseDoubleClick">
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsLaunch}" Value="True">
+                            <Setter Property="Foreground" Value="#FF6464"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Inside}" Value="True">
+                            <Setter Property="Background" Value="#55FF4040"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Header="M" Width="52">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <ComboBox ItemsSource="{Binding MarkerChoices}" SelectedItem="{Binding Marker, UpdateSourceTrigger=PropertyChanged}"
+                                      IsEnabled="{Binding IsLine}" ToolTip="Marker 1–8 (one line each; the Stream Deck buttons)"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="From" Binding="{Binding From}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="To" Binding="{Binding To}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="NM" Binding="{Binding Range}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="BRA" Binding="{Binding Bra}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Closure" Binding="{Binding Closure}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="ICPT" Binding="{Binding Icpt}" IsReadOnly="True"/>
+                <DataGridTemplateColumn Header="Alert NM" Width="64">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBox Text="{Binding Alert, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding IsLine}"
+                                     KeyDown="Alert_KeyDown" ToolTip="The alert sounds when the range closes to this (empty: none)"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="ICPT pt">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding ShowIntercept, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsLine}"
+                                      HorizontalAlignment="Center" ToolTip="Draw the intercept point on the maps"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="✕" Click="Remove_Click" IsEnabled="{Binding IsLine}" Padding="6,0" ToolTip="Remove this engagement line"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+    </Border>
+</UserControl>

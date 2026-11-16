@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>NeboDeck</AssemblyName>
+    <Product>NEBO ATC/GCI</Product>
+    <Company>Kestrel's Nest Community</Company>
+    <!-- The NEBO version: the server part (private NEBO-Server repo) uses the same number; package.ps1 checks the client and the Stream Deck match. -->
+    <Version>0.17.3</Version>
+    <RootNamespace>Nebo.StreamDeck</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+</Project>

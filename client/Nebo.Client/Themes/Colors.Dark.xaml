@@ -1,0 +1,26 @@
+<!-- Tactical console, dark: slate panels, cyan accent (matches the scopes). The same keys as
+     Colors.Light.xaml; ThemeManager swaps the two. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="Nebo.Bg" Color="#0E1419"/>
+    <SolidColorBrush x:Key="Nebo.Panel" Color="#151D25"/>
+    <SolidColorBrush x:Key="Nebo.PanelAlt" Color="#1C2630"/>
+    <SolidColorBrush x:Key="Nebo.Control" Color="#111920"/>
+    <SolidColorBrush x:Key="Nebo.Border" Color="#2A3742"/>
+    <SolidColorBrush x:Key="Nebo.BorderStrong" Color="#3E5060"/>
+    <SolidColorBrush x:Key="Nebo.Text" Color="#DCE4EA"/>
+    <SolidColorBrush x:Key="Nebo.TextDim" Color="#8A9AA8"/>
+    <SolidColorBrush x:Key="Nebo.TextDisabled" Color="#55636F"/>
+    <SolidColorBrush x:Key="Nebo.Accent" Color="#2EE6D6"/>
+    <SolidColorBrush x:Key="Nebo.AccentText" Color="#062B28"/>
+    <SolidColorBrush x:Key="Nebo.AccentSoft" Color="#173B3D"/>
+    <SolidColorBrush x:Key="Nebo.Hover" Color="#1F2B36"/>
+    <SolidColorBrush x:Key="Nebo.Pressed" Color="#26343F"/>
+    <SolidColorBrush x:Key="Nebo.Warn" Color="#FFB020"/>
+    <SolidColorBrush x:Key="Nebo.Danger" Color="#FF5A5A"/>
+    <SolidColorBrush x:Key="Nebo.Good" Color="#4CD964"/>
+    <SolidColorBrush x:Key="Nebo.Friendly" Color="#5AA8FF"/>
+    <SolidColorBrush x:Key="Nebo.Hostile" Color="#FF6464"/>
+    <SolidColorBrush x:Key="Nebo.Unknown" Color="#F0D050"/>
+    <SolidColorBrush x:Key="Nebo.Neutral" Color="#A9B4BE"/>
+</ResourceDictionary>

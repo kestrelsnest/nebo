@@ -1,0 +1,38 @@
+<UserControl x:Class="Nebo.Client.Panels.SrsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="8">
+            <!-- Where the radio stands; the full list and the SRS app's status are in Settings → SRS. -->
+            <DockPanel>
+                <Button x:Name="StartAppButton" DockPanel.Dock="Right" Content="Start SRS app" Padding="8,1" Margin="6,0,0,0" Click="StartApp_Click"
+                        ToolTip="Start your SRS client; click Connect in its window (External AWACS Mode) once"/>
+                <Button DockPanel.Dock="Right" Content="Change…" Padding="8,1" Click="ChangePosition_Click"
+                        ToolTip="Settings → SRS: airfield, carrier, AWACS or a fixed point. Or right-click a player → best radio spot"/>
+                <TextBlock x:Name="PositionText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+            </DockPanel>
+
+            <GroupBox Padding="6" Margin="0,8,0,0" Header="Your channels (6 ATC, 7–10 packages)">
+                <StackPanel>
+                    <StackPanel x:Name="ChannelRows"/>
+                    <DockPanel Margin="0,6,0,0">
+                        <Button x:Name="SaveDefaultButton" DockPanel.Dock="Right" Content="Save as default" Padding="8,1" Click="SaveDefault_Click"
+                                ToolTip="Keep these channels: NEBO tunes them into the SRS app whenever it connects, instead of the app's own presets"/>
+                        <TextBlock x:Name="DefaultText" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource Nebo.TextDim}"/>
+                    </DockPanel>
+                </StackPanel>
+            </GroupBox>
+
+            <GroupBox x:Name="ListenBox" Padding="6" Margin="0,8,0,0" Header="Listen traffic">
+                <StackPanel>
+                    <DockPanel>
+                        <Button x:Name="StopListenButton" DockPanel.Dock="Right" Content="Stop" Padding="8,0" Click="StopListen_Click"/>
+                        <TextBlock x:Name="ListenText" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource Nebo.TextDim}"
+                                   Text="Right-click a player's aircraft on a map or in Objects → Listen traffic."/>
+                    </DockPanel>
+                    <StackPanel x:Name="ListenRows" Margin="0,4,0,0"/>
+                </StackPanel>
+            </GroupBox>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

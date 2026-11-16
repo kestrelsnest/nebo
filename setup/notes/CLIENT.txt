@@ -1,0 +1,30 @@
+NEBO client (for controllers)
+=====================================
+Operations manual: https://github.com/kestrelsnest/nebo/blob/main/docs/MANUAL.md
+
+1. Install the .NET 10 Desktop Runtime (x64) once, from Microsoft:
+     https://dotnet.microsoft.com/download/dotnet/10.0   ("Desktop Runtime", Windows x64)
+2. Put Nebo.Client.exe anywhere (e.g. a NEBO folder on the desktop) and start it.
+3. Connection -> Connect -> New: a name, the server's address, its NEBO port and SRS
+   port, the server password and your SRS EAM password (all from the server admin). Connect
+   saves it (passwords encrypted for your Windows user only); next time pick it and Connect.
+4. Servers with Discord login: keep the Discord app running and click Authorize in its popup.
+   Then choose Blue or Red.
+
+Optional
+- A DCS install on the same PC gives the DCS map, DCS satellite imagery, airfield pavement,
+  taxiway signs and navaids on the ATC diagrams. Without it, NEBO still works with its own maps.
+  On the first start NEBO looks for DCS itself (ED installer, Steam, the usual folders on every
+  disk) and asks you to confirm or pick the folder; change it later in Window -> Map data ->
+  DCS World folder.
+- SRS: with the EAM password saved, NEBO starts your SRS client and connects it in External
+  AWACS Mode itself (untick that in the SRS tab to do it by hand); the SRS tab then sets your
+  radios, shows who is on which frequency and who is talking.
+- Window -> Theme (dark/light); GCI, ATC and DTC tabs can be detached onto a second screen.
+- DTC tab: build data cartridges (F/A-18C, F-16C, F-14B(U)) and push them to your pilots; they
+  need the DTC hook from the server admin. See the manual, section 12.
+- Missile launch alarm: two short alarms when an enemy missile is fired at one of your players;
+  Space centres the map on the target. Uses the PC's default sound output; switch it off or
+  change its volume in Window -> Launch alarm.
+
+Settings and layouts live in %AppData%\NEBO.

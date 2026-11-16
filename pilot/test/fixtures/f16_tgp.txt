@@ -1,0 +1,725 @@
+-----------------------------------------
+Background_Mask
+
+-----------------------------------------
+#1#
+
+-----------------------------------------
+#2#
+
+children are {
+-----------------------------------------
+screen
+
+}
+-----------------------------------------
+TGP_roll_stabilize_artifact
+
+-----------------------------------------
+TGP_NarrowBaseIR
+
+children are {
+-----------------------------------------
+TGP_NarrowSegmentBaseIR1
+
+children are {
+-----------------------------------------
+TGP_NarrowSegment1_IR1
+
+-----------------------------------------
+TGP_NarrowSegment2_IR1
+
+}
+-----------------------------------------
+TGP_NarrowSegmentBaseIR2
+
+children are {
+-----------------------------------------
+TGP_NarrowSegment1_IR2
+
+-----------------------------------------
+TGP_NarrowSegment2_IR2
+
+}
+-----------------------------------------
+TGP_NarrowSegmentBaseIR3
+
+children are {
+-----------------------------------------
+TGP_NarrowSegment1_IR3
+
+-----------------------------------------
+TGP_NarrowSegment2_IR3
+
+}
+-----------------------------------------
+TGP_NarrowSegmentBaseIR4
+
+children are {
+-----------------------------------------
+TGP_NarrowSegment1_IR4
+
+-----------------------------------------
+TGP_NarrowSegment2_IR4
+
+}
+}
+-----------------------------------------
+TGP_base_wide_FLIR
+
+children are {
+-----------------------------------------
+TGP_base_cross_hair_WFLIR_
+
+children are {
+-----------------------------------------
+TGP_normal_ch_WFLIR__base
+
+children are {
+-----------------------------------------
+TGP_normal_ch_WFLIR_1
+
+-----------------------------------------
+TGP_normal_ch_WFLIR_2
+
+-----------------------------------------
+TGP_normal_ch_WFLIR_3
+
+-----------------------------------------
+TGP_normal_ch_WFLIR_4
+
+}
+-----------------------------------------
+#123#
+51M
+}
+}
+-----------------------------------------
+MFD_TGP_compass_N
+
+children are {
+-----------------------------------------
+CompassLineNS
+
+-----------------------------------------
+CompassLineNS#133#
+
+-----------------------------------------
+compass_arrow
+
+}
+-----------------------------------------
+TGP_Root
+
+children are {
+-----------------------------------------
+AC_Reference_root
+
+children are {
+-----------------------------------------
+AC_Reference_Symbol
+
+-----------------------------------------
+AzimuthSteeringBar
+
+}
+-----------------------------------------
+A-A Table. Root. Unic ID: _id:1
+
+children are {
+}
+-----------------------------------------
+A-G Table. Root. Unic ID: _id:2
+
+children are {
+-----------------------------------------
+A-G Table. Root. Unic ID: _id:2. Text
+A-G
+children are {
+-----------------------------------------
+A-G Table. Root. Unic ID: _id:2. Text_Mask
+
+}
+}
+-----------------------------------------
+STBY Table. Root. Unic ID: _id:3
+
+children are {
+}
+-----------------------------------------
+A-A Table. Root. Unic ID: _id:4
+
+children are {
+}
+-----------------------------------------
+A-G Table. Root. Unic ID: _id:5
+
+children are {
+-----------------------------------------
+A-G Table. Root. Unic ID: _id:5. Text
+A-G
+children are {
+-----------------------------------------
+A-G Table. Root. Unic ID: _id:5. Text_Mask
+
+}
+}
+-----------------------------------------
+STBY Table. Root. Unic ID: _id:6
+
+children are {
+}
+}
+-----------------------------------------
+TGP_OnOff
+
+children are {
+-----------------------------------------
+TGP_VideoOn
+
+children are {
+-----------------------------------------
+TGP_LosPosPlaceholder
+
+children are {
+-----------------------------------------
+TGP_LosPosition
+
+}
+}
+-----------------------------------------
+TGP_NoModeMenu_Root_CMN
+
+children are {
+-----------------------------------------
+TGP_RadarAltitude
+24810
+-----------------------------------------
+TGP_ZoomLevel
+3Z
+-----------------------------------------
+TGP_TrackStatus
+AREA
+-----------------------------------------
+ATP_Weapon_Status_Outlined
+
+-----------------------------------------
+ATP_Weapon_Status
+
+-----------------------------------------
+CNTL Table. Root. Unic ID: _id:13
+
+children are {
+-----------------------------------------
+CNTL Table. Root. Unic ID: _id:13. Text
+CNTL
+children are {
+-----------------------------------------
+CNTL Table. Root. Unic ID: _id:13. Text_Mask
+
+}
+}
+-----------------------------------------
+CNTL Table. Root. Unic ID: _id:14
+
+children are {
+-----------------------------------------
+CNTL Table. Root. Unic ID: _id:14. Text
+CNTL
+children are {
+-----------------------------------------
+CNTL Table. Root. Unic ID: _id:14. Text_Mask
+
+}
+}
+-----------------------------------------
+CNTL Table. Root. Unic ID: _id:15
+
+children are {
+-----------------------------------------
+CNTL Table. Root. Unic ID: _id:15. TextPH_id:18
+
+children are {
+-----------------------------------------
+CNTL Table. Root. Unic ID: _id:15. TextPH_id:18. Text_Outlined
+CNTL
+-----------------------------------------
+CNTL Table. Root. Unic ID: _id:15. TextPH_id:18. Text
+CNTL
+-----------------------------------------
+CNTL Table. Root. Unic ID: _id:15. TextPH_id:18_Mask
+
+}
+}
+}
+-----------------------------------------
+TGP_MainMenu_Root_CMN
+
+children are {
+-----------------------------------------
+WHOT Table. Root. Unic ID: _id:19
+
+children are {
+-----------------------------------------
+WHOT Table. Root. Unic ID: _id:19. Text
+WHOT
+children are {
+-----------------------------------------
+WHOT Table. Root. Unic ID: _id:19. Text_Mask
+
+}
+}
+-----------------------------------------
+WHOT Table. Root. Unic ID: _id:20
+
+children are {
+-----------------------------------------
+WHOT Table. Root. Unic ID: _id:20. Text
+WHOT
+children are {
+-----------------------------------------
+WHOT Table. Root. Unic ID: _id:20. Text_Mask
+
+}
+}
+-----------------------------------------
+ Table. Root. Unic ID: _id:21
+
+children are {
+-----------------------------------------
+ Table. Root. Unic ID: _id:21. Text
+A
+G
+C
+children are {
+-----------------------------------------
+ Table. Root. Unic ID: _id:21. Text_Mask
+
+}
+}
+-----------------------------------------
+ Table. Root. Unic ID: _id:22
+
+children are {
+-----------------------------------------
+ Table. Root. Unic ID: _id:22. Text
+A
+G
+C
+children are {
+-----------------------------------------
+ Table. Root. Unic ID: _id:22. Text_Mask
+
+}
+}
+}
+-----------------------------------------
+WIDE Table. Root. Unic ID: _id:7
+
+children are {
+-----------------------------------------
+WIDE Table. Root. Unic ID: _id:7. Text
+WIDE
+children are {
+-----------------------------------------
+WIDE Table. Root. Unic ID: _id:7. Text_Mask
+
+}
+}
+-----------------------------------------
+WIDE Table. Root. Unic ID: _id:8
+
+children are {
+-----------------------------------------
+WIDE Table. Root. Unic ID: _id:8. Text
+WIDE
+children are {
+-----------------------------------------
+WIDE Table. Root. Unic ID: _id:8. Text_Mask
+
+}
+}
+-----------------------------------------
+OVRD Table. Root. Unic ID: _id:9
+
+children are {
+-----------------------------------------
+OVRD Table. Root. Unic ID: _id:9. TextPH_id:12
+
+children are {
+-----------------------------------------
+OVRD Table. Root. Unic ID: _id:9. TextPH_id:12. Text_Outlined
+OVRD
+-----------------------------------------
+OVRD Table. Root. Unic ID: _id:9. TextPH_id:12. Text
+OVRD
+-----------------------------------------
+OVRD Table. Root. Unic ID: _id:9. TextPH_id:12_Mask
+
+}
+}
+}
+-----------------------------------------
+TGP_LosPosCenter_Open
+
+-----------------------------------------
+TGP_LosPosCenter_Close
+
+-----------------------------------------
+TGP_Root
+
+-----------------------------------------
+TGP_OnOff
+
+children are {
+-----------------------------------------
+TGP_VideoOn
+
+-----------------------------------------
+TGP_NoModeMenu_Root
+
+children are {
+-----------------------------------------
+TGP_Range
+T 20
+-----------------------------------------
+TGP_coords_root
+
+children are {
+-----------------------------------------
+TGP_coordinates_lat_lon
+42 34.042
+41 37.730
+
+-----------------------------------------
+TGP_coordinates_altitude
+51
+}
+-----------------------------------------
+     Table. Root. Unic ID: _id:1
+
+children are {
+-----------------------------------------
+     Table. Root. Unic ID: _id:1. Text
+MAN
+children are {
+-----------------------------------------
+     Table. Root. Unic ID: _id:1. Text_Mask
+
+}
+}
+-----------------------------------------
+     Table. Root. Unic ID: _id:2
+
+children are {
+-----------------------------------------
+     Table. Root. Unic ID: _id:2. Text
+MAN
+children are {
+-----------------------------------------
+     Table. Root. Unic ID: _id:2. Text_Mask
+
+}
+}
+}
+-----------------------------------------
+TGP_MainMenu_Root
+
+children are {
+-----------------------------------------
+TGP_LSS_code
+1
+6
+8
+8
+-----------------------------------------
+N
+T Table. Root. Unic ID: _id:3
+
+children are {
+-----------------------------------------
+N
+T Table. Root. Unic ID: _id:3. Text
+N
+T
+children are {
+-----------------------------------------
+N
+T Table. Root. Unic ID: _id:3. Text_Mask
+
+}
+}
+-----------------------------------------
+S
+P Table. Root. Unic ID: _id:4
+
+children are {
+-----------------------------------------
+S
+P Table. Root. Unic ID: _id:4. TextPH_id:7
+
+children are {
+-----------------------------------------
+S
+P Table. Root. Unic ID: _id:4. TextPH_id:7. Text_Outlined
+S
+P
+-----------------------------------------
+S
+P Table. Root. Unic ID: _id:4. TextPH_id:7. Text
+S
+P
+-----------------------------------------
+S
+P Table. Root. Unic ID: _id:4. TextPH_id:7_Mask
+
+}
+}
+-----------------------------------------
+C
+Z Table. Root. Unic ID: _id:8
+
+children are {
+-----------------------------------------
+C
+Z Table. Root. Unic ID: _id:8. Text
+C
+Z
+children are {
+-----------------------------------------
+C
+Z Table. Root. Unic ID: _id:8. Text_Mask
+
+}
+}
+-----------------------------------------
+T
+G
+T Table. Root. Unic ID: _id:9
+
+children are {
+-----------------------------------------
+T
+G
+T Table. Root. Unic ID: _id:9. Text
+S
+T
+P
+children are {
+-----------------------------------------
+T
+G
+T Table. Root. Unic ID: _id:9. Text_Mask
+
+}
+}
+-----------------------------------------
+N
+T Table. Root. Unic ID: _id:10
+
+children are {
+-----------------------------------------
+N
+T Table. Root. Unic ID: _id:10. Text
+N
+T
+children are {
+-----------------------------------------
+N
+T Table. Root. Unic ID: _id:10. Text_Mask
+
+}
+}
+-----------------------------------------
+C
+Z Table. Root. Unic ID: _id:11
+
+children are {
+-----------------------------------------
+C
+Z Table. Root. Unic ID: _id:11. Text
+C
+Z
+children are {
+-----------------------------------------
+C
+Z Table. Root. Unic ID: _id:11. Text_Mask
+
+}
+}
+-----------------------------------------
+T
+G
+T Table. Root. Unic ID: _id:12
+
+children are {
+-----------------------------------------
+T
+G
+T Table. Root. Unic ID: _id:12. Text
+S
+T
+P
+children are {
+-----------------------------------------
+T
+G
+T Table. Root. Unic ID: _id:12. Text_Mask
+
+}
+}
+-----------------------------------------
+L
+S
+S Table. Root. Unic ID: _id:13
+
+children are {
+-----------------------------------------
+L
+S
+S Table. Root. Unic ID: _id:13. TextPH_id:16
+
+children are {
+-----------------------------------------
+L
+S
+S Table. Root. Unic ID: _id:13. TextPH_id:16. Text_Outlined
+L
+S
+S
+-----------------------------------------
+L
+S
+S Table. Root. Unic ID: _id:13. TextPH_id:16. Text
+L
+S
+S
+-----------------------------------------
+L
+S
+S Table. Root. Unic ID: _id:13. TextPH_id:16_Mask
+
+}
+}
+}
+}
+-----------------------------------------
+DCLT Table. Root. Unic ID: _id:1
+
+children are {
+-----------------------------------------
+DCLT Table. Root. Unic ID: _id:1. TextPH_id:4
+
+children are {
+-----------------------------------------
+DCLT Table. Root. Unic ID: _id:1. TextPH_id:4. Text_Outlined
+DCLT
+-----------------------------------------
+DCLT Table. Root. Unic ID: _id:1. TextPH_id:4. Text
+DCLT
+-----------------------------------------
+DCLT Table. Root. Unic ID: _id:1. TextPH_id:4_Mask
+
+}
+}
+-----------------------------------------
+S-J Table. Root. Unic ID: _id:5
+
+children are {
+}
+-----------------------------------------
+TCN Table. Root. Unic ID: _id:6
+
+children are {
+}
+-----------------------------------------
+S-J Table. Root. Unic ID: _id:7
+
+children are {
+}
+-----------------------------------------
+TCN Table. Root. Unic ID: _id:8
+
+children are {
+}
+-----------------------------------------
+PB_Menu_Label_ROOT_12
+
+children are {
+-----------------------------------------
+PB_Menu_Label_ROOT_Selected12
+
+children are {
+-----------------------------------------
+PB_Menu_Label_rootFiller_3Sym_12
+
+children are {
+-----------------------------------------
+PB_Menu_Label_rootFiller_3Sym_12_Fill_Box_
+
+}
+-----------------------------------------
+PB_Menu_Label_Black_PB_12
+TGP
+}
+}
+-----------------------------------------
+PB_Menu_Label_3Sym_12_Mask
+
+-----------------------------------------
+PB_Menu_Label_ROOT_13
+
+children are {
+-----------------------------------------
+PB_Menu_Label_outlined13
+HSD
+-----------------------------------------
+PB_Menu_Label_13
+HSD
+}
+-----------------------------------------
+PB_Menu_Label_3Sym_13_Mask
+
+-----------------------------------------
+PB_Menu_Label_ROOT_14
+
+children are {
+-----------------------------------------
+PB_Menu_Label_outlined14
+SMS
+-----------------------------------------
+PB_Menu_Label_14
+SMS
+}
+-----------------------------------------
+PB_Menu_Label_3Sym_14_Mask
+
+-----------------------------------------
+SWAP Table. Root. Unic ID: _id:9
+
+children are {
+-----------------------------------------
+SWAP Table. Root. Unic ID: _id:9. Text
+SWAP
+children are {
+-----------------------------------------
+SWAP Table. Root. Unic ID: _id:9. Text_Mask
+
+}
+}
+-----------------------------------------
+SWAP Table. Root. Unic ID: _id:10
+
+children are {
+-----------------------------------------
+SWAP Table. Root. Unic ID: _id:10. Text
+SWAP
+children are {
+-----------------------------------------
+SWAP Table. Root. Unic ID: _id:10. Text_Mask
+
+}
+}
+-----------------------------------------
+SOI
+

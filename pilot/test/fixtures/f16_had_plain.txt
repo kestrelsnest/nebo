@@ -1,0 +1,449 @@
+-----------------------------------------
+Background_Mask
+
+-----------------------------------------
+ROOT_PAGE
+
+children are {
+-----------------------------------------
+Expand_layer
+
+children are {
+-----------------------------------------
+HADCenter
+
+children are {
+-----------------------------------------
+RingsPH
+
+children are {
+-----------------------------------------
+Range_Ring_1
+
+-----------------------------------------
+Range_Ring_2
+
+-----------------------------------------
+Range_Ring_3
+
+}
+-----------------------------------------
+HAD_Heading_PH
+
+children are {
+}
+}
+}
+-----------------------------------------
+ActiveNavRoute_0_WYPT_Root_0
+
+children are {
+-----------------------------------------
+ActiveNavRoute_0_Selected_STPT_circle_0
+
+}
+-----------------------------------------
+ActiveNavRoute_0_Line_Root0
+
+children are {
+-----------------------------------------
+ActiveNavRoute_0_Line_0
+
+}
+-----------------------------------------
+HAD_DEST0
+
+-----------------------------------------
+HAD_DEST1
+
+-----------------------------------------
+HAD_DEST2
+
+-----------------------------------------
+HAD_DEST3
+
+-----------------------------------------
+HAD_DEST4
+
+-----------------------------------------
+HAD_DEST5
+
+-----------------------------------------
+HAD_DEST6
+
+-----------------------------------------
+HAD_DEST7
+
+-----------------------------------------
+HAD_DEST8
+
+-----------------------------------------
+HAD_DEST9
+
+-----------------------------------------
+HAD_DEST10
+
+-----------------------------------------
+HAD_DEST11
+
+-----------------------------------------
+HAD_DEST12
+
+-----------------------------------------
+HAD_DEST13
+
+-----------------------------------------
+HAD_DEST14
+
+-----------------------------------------
+HAD_DEST15
+
+-----------------------------------------
+HAD_DEST16
+
+-----------------------------------------
+HAD_DEST17
+
+-----------------------------------------
+HAD_DEST18
+
+-----------------------------------------
+HAD_AircraftPosValid_PH
+
+children are {
+-----------------------------------------
+HAD_PrePlannedSAM_Keeper
+
+-----------------------------------------
+DefenseZones_Keeper
+
+-----------------------------------------
+System_AirTracks_Keeper
+
+}
+-----------------------------------------
+HAD_OwnshipLayer
+
+children are {
+-----------------------------------------
+Aircraft_Symbol
+
+}
+-----------------------------------------
+HAD_HTS_PosValidPH
+
+children are {
+-----------------------------------------
+HAD_HTS_Contacts_Keeper
+
+}
+-----------------------------------------
+HAD_PAGE
+
+children are {
+-----------------------------------------
+Range_Scale_Root
+
+children are {
+-----------------------------------------
+Range_Scale_Value
+60
+-----------------------------------------
+Decrement_Range_Scale_Symbol
+
+-----------------------------------------
+Increment_Range_Scale_Symbol
+
+}
+-----------------------------------------
+    Table. Root. Unic ID: _id:2
+
+children are {
+-----------------------------------------
+    Table. Root. Unic ID: _id:2. Text
+DEP
+children are {
+-----------------------------------------
+    Table. Root. Unic ID: _id:2. Text_Mask
+
+}
+}
+-----------------------------------------
+THRT Table. Root. Unic ID: _id:12
+
+children are {
+-----------------------------------------
+THRT Table. Root. Unic ID: _id:12. TextPH_id:15
+
+children are {
+-----------------------------------------
+THRT Table. Root. Unic ID: _id:12. TextPH_id:15. Text
+THRT
+-----------------------------------------
+THRT Table. Root. Unic ID: _id:12. TextPH_id:15_Mask
+
+}
+}
+-----------------------------------------
+CNTL Table. Root. Unic ID: _id:16
+
+children are {
+-----------------------------------------
+CNTL Table. Root. Unic ID: _id:16. TextPH_id:19
+
+children are {
+-----------------------------------------
+CNTL Table. Root. Unic ID: _id:16. TextPH_id:19. Text
+CNTL
+-----------------------------------------
+CNTL Table. Root. Unic ID: _id:16. TextPH_id:19_Mask
+
+}
+}
+-----------------------------------------
+FR
+ON Table. Root. Unic ID: _id:20
+
+children are {
+-----------------------------------------
+FR
+ON Table. Root. Unic ID: _id:20. Text
+FR
+ON
+children are {
+-----------------------------------------
+FR
+ON Table. Root. Unic ID: _id:20. Text_Mask
+
+}
+}
+-----------------------------------------
+GS
+OF Table. Root. Unic ID: _id:21
+
+children are {
+-----------------------------------------
+GS
+OF Table. Root. Unic ID: _id:21. Text
+GS
+OF
+children are {
+-----------------------------------------
+GS
+OF Table. Root. Unic ID: _id:21. Text_Mask
+
+}
+}
+-----------------------------------------
+T
+I Table. Root. Unic ID: _id:22
+
+children are {
+-----------------------------------------
+T
+I Table. Root. Unic ID: _id:22. Text
+T
+I
+children are {
+-----------------------------------------
+T
+I Table. Root. Unic ID: _id:22. Text_Mask
+
+}
+}
+-----------------------------------------
+MEM Table. Root. Unic ID: _id:23
+
+children are {
+-----------------------------------------
+MEM Table. Root. Unic ID: _id:23. Text
+MEM
+children are {
+-----------------------------------------
+MEM Table. Root. Unic ID: _id:23. Text_Mask
+
+}
+}
+-----------------------------------------
+TM Table. Root. Unic ID: _id:24
+
+children are {
+-----------------------------------------
+TM Table. Root. Unic ID: _id:24. Text
+TM
+children are {
+-----------------------------------------
+TM Table. Root. Unic ID: _id:24. Text_Mask
+
+}
+}
+}
+-----------------------------------------
+NORM Table. Root. Unic ID: _id:3
+
+children are {
+-----------------------------------------
+NORM Table. Root. Unic ID: _id:3. Text
+NORM
+children are {
+-----------------------------------------
+NORM Table. Root. Unic ID: _id:3. Text_Mask
+
+}
+}
+-----------------------------------------
+EXP1 Table. Root. Unic ID: _id:4
+
+children are {
+-----------------------------------------
+EXP1 Table. Root. Unic ID: _id:4. TextPH_id:7
+
+children are {
+-----------------------------------------
+EXP1 Table. Root. Unic ID: _id:4. TextPH_id:7_Mask
+
+}
+}
+-----------------------------------------
+EXP2 Table. Root. Unic ID: _id:8
+
+children are {
+-----------------------------------------
+EXP2 Table. Root. Unic ID: _id:8. TextPH_id:11
+
+children are {
+-----------------------------------------
+EXP2 Table. Root. Unic ID: _id:8. TextPH_id:11_Mask
+
+}
+}
+-----------------------------------------
+Cursor
+
+children are {
+-----------------------------------------
+Cursor_Line_Up
+
+-----------------------------------------
+Cursor_Line_Down
+
+}
+}
+-----------------------------------------
+Aircraft_reference_symbol_Root
+
+children are {
+-----------------------------------------
+AC_Reference_root
+
+children are {
+-----------------------------------------
+Aircraft_reference_Reference_Symbol
+
+-----------------------------------------
+Azimuth_Steering_Bar
+
+}
+}
+-----------------------------------------
+Bullseye_LOS_Mask_PH
+
+-----------------------------------------
+Bullseye_LOS_Mask_PH_Mask
+
+-----------------------------------------
+Range_Scale_Root_Mask
+
+-----------------------------------------
+DCLT Table. Root. Unic ID: _id:1
+
+children are {
+-----------------------------------------
+DCLT Table. Root. Unic ID: _id:1. TextPH_id:4
+
+children are {
+-----------------------------------------
+DCLT Table. Root. Unic ID: _id:1. TextPH_id:4. Text
+DCLT
+-----------------------------------------
+DCLT Table. Root. Unic ID: _id:1. TextPH_id:4_Mask
+
+}
+}
+-----------------------------------------
+S-J Table. Root. Unic ID: _id:5
+
+children are {
+}
+-----------------------------------------
+TCN Table. Root. Unic ID: _id:6
+
+children are {
+}
+-----------------------------------------
+PB_Menu_Label_ROOT_12
+
+children are {
+-----------------------------------------
+PB_Menu_Label_12
+TEST
+}
+-----------------------------------------
+PB_Menu_Label_4Sym_12_Mask
+
+-----------------------------------------
+PB_Menu_Label_ROOT_13
+
+children are {
+-----------------------------------------
+PB_Menu_Label_ROOT_Selected13
+
+children are {
+-----------------------------------------
+PB_Menu_Label_rootFiller_3Sym_13
+
+children are {
+-----------------------------------------
+PB_Menu_Label_rootFiller_3Sym_13_Fill_Box_
+
+}
+-----------------------------------------
+PB_Menu_Label_Black_PB_13
+HAD
+}
+}
+-----------------------------------------
+PB_Menu_Label_3Sym_13_Mask
+
+-----------------------------------------
+PB_Menu_Label_ROOT_14
+
+children are {
+-----------------------------------------
+PB_Menu_Label_14
+FCR
+}
+-----------------------------------------
+PB_Menu_Label_3Sym_14_Mask
+
+-----------------------------------------
+SWAP Table. Root. Unic ID: _id:7
+
+children are {
+-----------------------------------------
+SWAP Table. Root. Unic ID: _id:7. Text
+SWAP
+children are {
+-----------------------------------------
+SWAP Table. Root. Unic ID: _id:7. Text_Mask
+
+}
+}
+-----------------------------------------
+NotSoi_Label
+
+children are {
+-----------------------------------------
+NotSoi_Label_off
+NOT SOI
+}

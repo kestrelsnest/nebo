@@ -1,0 +1,223 @@
+<UserControl x:Class="Nebo.Client.Panels.TomcatTabs"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DockPanel>
+        <!-- The flight plan the point tabs and the map work on -->
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+            <DockPanel>
+                <TextBlock Text="Flight plan" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <ComboBox x:Name="PlanBox" Width="130" SelectionChanged="PlanBox_Changed"
+                          ToolTip="Plan 1 is the mission's route (only its lines are the cartridge's); the shared points go into plan 2"/>
+                <CheckBox x:Name="RouteAsLine" DockPanel.Dock="Right" Content="Route drawn as a line" VerticalAlignment="Center" Margin="8,0,0,0" Click="RouteAsLine_Click"
+                          ToolTip="The route is drawn as one of the plan's four lines: three are left for lines"/>
+                <TextBox x:Name="PlanName" Margin="8,0,0,0" LostFocus="PlanName_LostFocus" ToolTip="The plan's name (16 characters)"/>
+            </DockPanel>
+            <TextBlock x:Name="PlanInfo" Foreground="{DynamicResource Nebo.TextDim}" Margin="0,3,0,0"/>
+        </StackPanel>
+
+        <TabControl x:Name="Tabs" SelectionChanged="Tabs_SelectionChanged">
+            <!-- Waypoints of the plan (the session's waypoints) -->
+            <TabItem Header="WPT">
+                <DockPanel Margin="4">
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="▲" Width="28" Click="Up_Click" ToolTip="Move the selected waypoint up"/>
+                            <Button Content="▼" Width="28" Margin="4,0,0,0" Click="Down_Click" ToolTip="Move the selected waypoint down"/>
+                            <Button Content="Delete" Padding="8,1" Margin="10,0,0,0" Click="Delete_Click" ToolTip="Delete the selected waypoints (Delete key)"/>
+                        </StackPanel>
+                        <TextBlock Foreground="{DynamicResource Nebo.TextDim}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                   Text="Right-click the map to add a waypoint to the plan; drag to move. 50 points a plan in all (waypoints, line points, additional points)."/>
+                    </StackPanel>
+                    <Grid x:Name="WptEditor" DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                        <TextBlock x:Name="WptTitle" Grid.ColumnSpan="2" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <TextBlock Grid.Row="1" Text="Name" VerticalAlignment="Center" Margin="0,0,8,3"/>
+                        <TextBox x:Name="WptName" Grid.Row="1" Grid.Column="1" Width="100" HorizontalAlignment="Left" Margin="0,0,0,3"
+                                 LostFocus="Wpt_LostFocus" ToolTip="8 characters"/>
+                        <TextBlock Grid.Row="2" Text="Elevation" VerticalAlignment="Center" Margin="0,0,8,3"/>
+                        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,3">
+                            <TextBox x:Name="WptElev" Width="70" LostFocus="Wpt_LostFocus"/>
+                            <TextBlock Text="ft" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="3" Text="Speed or time" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
+                            <TextBox x:Name="WptSpeed" Width="60" LostFocus="Wpt_LostFocus" ToolTip="Ground speed, kt (0–999); empty the time to use it"/>
+                            <TextBlock Text="kt   or TOT" VerticalAlignment="Center" Margin="4,0,6,0"/>
+                            <TextBox x:Name="WptTot" Width="80" LostFocus="Wpt_LostFocus" ToolTip="Time over target, as the jet takes it (e.g. 12:30:00); a time wins over a speed"/>
+                        </StackPanel>
+                    </Grid>
+                    <ListBox x:Name="WptList" FontFamily="Consolas" SelectionMode="Extended"
+                             SelectionChanged="WptList_SelectionChanged" KeyDown="List_KeyDown"/>
+                </DockPanel>
+            </TabItem>
+
+            <!-- Lines of the plan (the session's SA lines) -->
+            <TabItem Header="LINES">
+                <DockPanel Margin="4">
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <DockPanel>
+                            <TextBlock Text="Current line" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <Button DockPanel.Dock="Right" Content="Delete line" Padding="8,1" Margin="4,0,0,0" Click="DeleteLine_Click"/>
+                            <CheckBox x:Name="LineClosed" DockPanel.Dock="Right" Content="Closed" VerticalAlignment="Center" Margin="8,0,0,0" Click="LineClosed_Click"
+                                      ToolTip="An area: the jet joins the last point to the first (8 points at most)"/>
+                            <ComboBox x:Name="LineBox" DisplayMemberPath="Text" SelectionChanged="LineBox_Changed"/>
+                        </DockPanel>
+                        <TextBlock Foreground="{DynamicResource Nebo.TextDim}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                   Text="Right-click the map: a point on the current line, after its selected point; with “New line” a new one starts. 4 lines of 9 points (3 lines with the route drawn as a line)."/>
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
+                        <Button Content="Delete point" Padding="8,1" Click="Delete_Click" ToolTip="Delete the selected points (Delete key)"/>
+                    </StackPanel>
+                    <ListBox x:Name="LineList" FontFamily="Consolas" SelectionMode="Extended"
+                             SelectionChanged="LineList_SelectionChanged" KeyDown="List_KeyDown"/>
+                </DockPanel>
+            </TabItem>
+
+            <!-- Additional points of the plan (the session's GPS points) -->
+            <TabItem Header="POINTS">
+                <DockPanel Margin="4">
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <Button Content="Delete" Padding="8,1" HorizontalAlignment="Left" Click="Delete_Click" ToolTip="Delete the selected points (Delete key)"/>
+                        <TextBlock Foreground="{DynamicResource Nebo.TextDim}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                   Text="Right-click the map to add a point the jet knows by name (not on the route); drag to move."/>
+                    </StackPanel>
+                    <Grid x:Name="ApEditor" DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                        <TextBlock Text="Name, elevation" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <TextBox x:Name="ApName" Width="100" LostFocus="Ap_LostFocus" ToolTip="8 characters"/>
+                            <TextBox x:Name="ApElev" Width="70" Margin="8,0,0,0" LostFocus="Ap_LostFocus"/>
+                            <TextBlock Text="ft" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                    <ListBox x:Name="ApList" FontFamily="Consolas" SelectionMode="Extended"
+                             SelectionChanged="ApList_SelectionChanged" KeyDown="List_KeyDown"/>
+                </DockPanel>
+            </TabItem>
+
+            <!-- GBU-31 targets -->
+            <TabItem Header="JDAM">
+                <DockPanel Margin="4">
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Station" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <ComboBox x:Name="StationBox" Width="80" SelectionChanged="StationBox_Changed"/>
+                            <Button Content="Clear target" Padding="8,1" Margin="10,0,0,0" Click="Delete_Click" ToolTip="The picked target back to empty"/>
+                        </StackPanel>
+                        <TextBlock Foreground="{DynamicResource Nebo.TextDim}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                   Text="Pick a target, right-click the map to place it (the next empty one is picked then). On the map drag the target, its launch point (inside the zone) and the heading handle at the zone's far end."/>
+                    </StackPanel>
+                    <Grid x:Name="JdamEditor" DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                        <TextBlock x:Name="JdamTitle" Grid.ColumnSpan="2" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <TextBlock Grid.Row="1" Text="Name, heading" VerticalAlignment="Center" Margin="0,0,8,3"/>
+                        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,3">
+                            <TextBox x:Name="JdamName" Width="110" LostFocus="Jdam_LostFocus"/>
+                            <TextBox x:Name="JdamHeading" Width="55" Margin="8,0,0,0" LostFocus="Jdam_LostFocus" ToolTip="Attack heading 0–359.9°"/>
+                            <TextBlock Text="°" VerticalAlignment="Center" Margin="3,0,0,0"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="2" Text="Drop" VerticalAlignment="Center" Margin="0,0,8,3"/>
+                        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,3">
+                            <TextBox x:Name="JdamAlt" Width="70" LostFocus="Jdam_LostFocus" ToolTip="10,000–50,000 ft"/>
+                            <TextBlock Text="ft" VerticalAlignment="Center" Margin="4,0,10,0"/>
+                            <TextBox x:Name="JdamSpeed" Width="55" LostFocus="Jdam_LostFocus" ToolTip="Ground speed 250–750 kt"/>
+                            <TextBlock Text="kt" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="3" Text="Impact" VerticalAlignment="Center" Margin="0,0,8,3"/>
+                        <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,3">
+                            <CheckBox x:Name="JdamHasImpactHeading" Content="heading" VerticalAlignment="Center" Click="Jdam_Click"/>
+                            <TextBox x:Name="JdamImpactHeading" Width="45" Margin="4,0,10,0" LostFocus="Jdam_LostFocus" ToolTip="0–359°"/>
+                            <CheckBox x:Name="JdamHasImpactAngle" Content="angle" VerticalAlignment="Center" Click="Jdam_Click"/>
+                            <TextBox x:Name="JdamImpactAngle" Width="40" Margin="4,0,0,0" LostFocus="Jdam_LostFocus" ToolTip="30–85°"/>
+                        </StackPanel>
+                        <TextBlock x:Name="JdamZone" Grid.Row="4" Grid.ColumnSpan="2" Foreground="{DynamicResource Nebo.TextDim}"/>
+                    </Grid>
+                    <ListBox x:Name="JdamList" FontFamily="Consolas" SelectionChanged="JdamList_SelectionChanged" KeyDown="List_KeyDown"/>
+                </DockPanel>
+            </TabItem>
+
+            <!-- Countermeasures -->
+            <TabItem Header="CMDS">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="4">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <TextBlock Text="Program" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <ComboBox x:Name="CmdsProgram" Width="190" SelectionChanged="CmdsProgram_Changed"/>
+                            <TextBlock Text="Priority" VerticalAlignment="Center" Margin="10,0,4,0"/>
+                            <TextBox x:Name="CmdsPriority" Width="32" ToolTip="0–9"/>
+                            <Button Content="Apply" Padding="8,1" Margin="8,0,0,0" Click="CmdsApply_Click"/>
+                        </StackPanel>
+                        <Grid x:Name="ProgramGrid" Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="60"/>
+                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                        </Grid>
+                        <WrapPanel Margin="0,0,0,8">
+                            <TextBlock Text="Bingo: chaff" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBox x:Name="BingoChaff" Width="32"/>
+                            <TextBlock Text="flares" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                            <TextBox x:Name="BingoFlares" Width="32"/>
+                            <TextBlock Text="other 1" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                            <TextBox x:Name="BingoOther1" Width="32"/>
+                            <TextBlock Text="other 2" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                            <TextBox x:Name="BingoOther2" Width="32"/>
+                            <Button Content="Apply" Padding="8,1" Margin="8,0,0,0" Click="BingoApply_Click"/>
+                        </WrapPanel>
+                        <TextBlock Text="AUTO program and threshold by threat category" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                        <Grid x:Name="AutoGrid" Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="210"/>
+                                <ColumnDefinition Width="90"/>
+                            </Grid.ColumnDefinitions>
+                        </Grid>
+                        <TextBlock Text="Overrides for a DCS type" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                        <WrapPanel Margin="0,0,0,4">
+                            <ComboBox x:Name="OverrideType" Width="200" DisplayMemberPath="Text"/>
+                            <ComboBox x:Name="OverrideProgram" Width="170" Margin="6,0,0,0"/>
+                            <ComboBox x:Name="OverrideThreshold" Width="80" Margin="6,0,0,0"/>
+                            <Button Content="Add" Padding="8,1" Margin="6,0,0,0" Click="OverrideAdd_Click"/>
+                            <Button Content="Remove" Padding="8,1" Margin="4,0,0,0" Click="OverrideRemove_Click"/>
+                        </WrapPanel>
+                        <ListBox x:Name="OverrideList" FontFamily="Consolas" Height="120"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Tactical image set callsigns -->
+            <TabItem Header="TIS">
+                <StackPanel Margin="6">
+                    <CheckBox x:Name="TisMission" Content="Own callsign from the mission" Click="Tis_Click"/>
+                    <StackPanel Orientation="Horizontal" Margin="18,4,0,8">
+                        <TextBlock Text="Own callsign" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBox x:Name="TisOwn" Width="80" LostFocus="TisOwn_LostFocus" ToolTip="6 characters: A–Z, 0–9, blank"/>
+                    </StackPanel>
+                    <CheckBox x:Name="TisWingmen" Content="Add the flight's wingmen to the send-to list" Click="Tis_Click"/>
+                    <TextBlock Text="Send to" FontWeight="SemiBold" Margin="0,8,0,3"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBox x:Name="TisNew" Width="80" KeyDown="TisNew_KeyDown" ToolTip="6 characters: A–Z, 0–9, blank"/>
+                        <Button Content="Add" Padding="8,1" Margin="6,0,0,0" Click="TisAdd_Click"/>
+                        <Button Content="Remove" Padding="8,1" Margin="4,0,0,0" Click="TisRemove_Click"/>
+                    </StackPanel>
+                    <ListBox x:Name="TisList" FontFamily="Consolas" Height="140"/>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</UserControl>

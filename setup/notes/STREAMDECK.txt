@@ -1,0 +1,31 @@
+NEBO __VERSION__ - STREAM DECK PLUGIN
+
+For controllers: NEBO's engagement lines, your SRS channels and the map controls on a
+Stream Deck (the profile is laid out for a Stream Deck XL; the keys work on any model).
+
+INSTALL
+1. Double-click com.kestrelsnest.nebo.streamDeckPlugin (Stream Deck 6 or later installs it).
+2. Double-click "NEBO.streamDeckProfile" and confirm the import (Stream Deck XL).
+   Or place the keys yourself from the "NEBO" category: Engagement, SRS channel and Map
+   filter keys pick their number or filter in the key's settings.
+3. Run the NEBO client on the same PC. Keys say "NEBO offline" while it is closed.
+
+COMING FROM OVERSEER OR EAGLE'S NEST (the old names)
+Remove the old "Overseer" or "Eagle's Nest" plugin (Stream Deck > Preferences > Plugins,
+uninstall), then install as above. Keys on an old page belong to the old plugin: import the
+NEBO page instead and delete the old one.
+
+THE XL PAGE
+Row 1  Engagements 1-8: the engagement line with that marker (set it in the Engagements panel or
+       by right-clicking the line). Range, alert and target; green far, amber within its Alert NM
+       + 10 NM (no alert: 20-40 NM), red inside (blinking). Press: the map shows both ends.
+Row 2  CH1-CH5, Labels (Full > Short > None), Label pos (above / beside the vector), GCI / ATC.
+Row 3  CH6-CH10 (CH6 ATC, CH7-10 packages), Players only (hold: GCI maps show only people).
+       Channel keys: frequency and role; orange frame = the channel you transmit on, pulsing red =
+       transmitting now; press: make it the channel you transmit on.
+Row 4  Map filters: ground units, landed, threat rings, F10 marks, TGP, zones, airfields. Press: off > 30% >
+       60% > 100% > off (the key gets brighter with each stage).
+Labels, label position, filters and Players only act on every GCI map.
+
+The plugin talks to the client on this PC only (localhost port 47810; DeckPort in the client's
+settings.json). Nothing goes over the network.
