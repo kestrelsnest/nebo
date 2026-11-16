@@ -51,12 +51,14 @@ jobs:
         shell: powershell
         run: .\package.ps1
 
+      # Plain ASCII with LF endings, so `sha256sum -c` reads it (Tee-Object would write UTF-16).
       - name: Checksums
         shell: powershell
         run: |
-          Get-ChildItem release -File | Where-Object { $_.Name -match '^NEBO-.*\.(exe|zip)$' } |
-            Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } |
-            Tee-Object release\SHA256SUMS.txt
+          $lines = Get-ChildItem release -File | Where-Object { $_.Name -match '^NEBO-.*\.(exe|zip)$' } |
+            Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" }
+          [IO.File]::WriteAllText("$PWD\release\SHA256SUMS.txt", (($lines -join "`n") + "`n"), [Text.Encoding]::ASCII)
+          $lines
 
       - uses: actions/upload-artifact@v4
         with:
